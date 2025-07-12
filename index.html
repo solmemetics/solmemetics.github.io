@@ -105,9 +105,14 @@
     }
 
     .social-icon {
-      width: 40px; /* Adjust size as needed */
-      height: 40px;
+      width: 48px; /* Increased base size for all icons */
+      height: 48px;
       transition: opacity 0.3s; /* Smooth hover effect */
+    }
+
+    .social-icon.jupiter-icon {
+      width: 57.6px; /* 20% larger than 48px */
+      height: 57.6px;
     }
 
     .social-icon:hover {
@@ -131,7 +136,7 @@
         <img src="telegram.png" alt="Telegram" class="social-icon" />
       </a>
       <a href="https://jupiter.example.com" target="_blank">
-        <img src="jupiter.png" alt="Jupiter" class="social-icon" />
+        <img src="jupiter.png" alt="Jupiter" class="social-icon jupiter-icon" />
       </a>
       <a href="https://x.com/solmemetics" target="_blank">
         <img src="twitter.png" alt="Twitter" class="social-icon" />
@@ -322,7 +327,7 @@
             await checkPhantomAndConnect();
           }
         } catch (err) {
-          console.error("Auto-connect error:', err);
+          console.error("Auto-connect error:", err);
         }
       }
     });
