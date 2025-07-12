@@ -96,6 +96,23 @@
     #balance {
       margin-right: 10px;
     }
+
+    /* Style for social media icons */
+    .social-links {
+      display: flex;
+      gap: 20px; /* Space between icons */
+      margin-bottom: 20px; /* Space between icons and status div */
+    }
+
+    .social-icon {
+      width: 40px; /* Adjust size as needed */
+      height: 40px;
+      transition: opacity 0.3s; /* Smooth hover effect */
+    }
+
+    .social-icon:hover {
+      opacity: 0.8; /* Subtle hover effect */
+    }
   </style>
 </head>
 <body>
@@ -109,6 +126,17 @@
   </div>
   <div class="content">
     <img src="your-image.png" alt="Coming Soon" />
+    <div class="social-links">
+      <a href="https://t.me/solmemeticsTG" target="_blank">
+        <img src="telegram.png" alt="Telegram" class="social-icon" />
+      </a>
+      <a href="https://jupiter.example.com" target="_blank">
+        <img src="jupiter.png" alt="Jupiter" class="social-icon" />
+      </a>
+      <a href="https://x.com/solmemetics" target="_blank">
+        <img src="twitter.png" alt="Twitter" class="social-icon" />
+      </a>
+    </div>
     <div id="status"></div>
   </div>
 
@@ -294,7 +322,7 @@
             await checkPhantomAndConnect();
           }
         } catch (err) {
-          console.error("Auto-connect error:", err);
+          console.error("Auto-connect error:', err);
         }
       }
     });
