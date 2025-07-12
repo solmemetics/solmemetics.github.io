@@ -11,6 +11,7 @@
       font-family: Arial, sans-serif;
       text-align: center;
       padding: 60px 20px;
+      position: relative;
     }
 
     img {
@@ -39,12 +40,33 @@
       font-size: 16px;
       color: #ccc;
     }
+
+    #controls {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #connect {
+      font-weight: bold;
+    }
+
+    #balance {
+      font-weight: bold;
+      color: white;
+    }
   </style>
 </head>
 <body>
+  <div id="controls">
+    <button id="connect"><strong>Connect</strong></button>
+    <div id="balance"><strong>Balance: 0 LetsBONK</strong></div>
+  </div>
   <img src="your-image.png" alt="Coming Soon" />
   <h1>Coming Soon</h1>
-  <button id="connect">Connect Phantom</button>
   <div id="status"></div>
 
   <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
@@ -52,12 +74,14 @@
   <script>
     // LetsBONK token mint address
     const TOKEN_MINT = new solanaWeb3.PublicKey("CDBdbNqmrLu1PcgjrFG52yxg71QnFhBZcUE6PSFdbonk");
+    const TOTAL_SUPPLY = 100000000; // 100 million tokens
+    const ONE_PERCENT = TOTAL_SUPPLY * 0.01; // 1% of total supply
 
     const connectBtn = document.getElementById("connect");
     const statusDiv = document.getElementById("status");
+    const balanceDiv = document.getElementById("balance");
 
     async function checkPhantomAndConnect() {
-      // Check if Phantom is available
       if (!window.solana || !window.solana.isPhantom) {
         statusDiv.textContent = "Phantom Wallet not found. Please install Phantom.";
         window.open("https://phantom.app/", "_blank");
@@ -65,28 +89,24 @@
       }
 
       try {
-        // Attempt to connect to Phantom
         const provider = window.solana;
         const resp = await provider.connect();
         const publicKey = resp.publicKey;
         statusDiv.textContent = `Connected: ${publicKey.toBase58().slice(0, 6)}...`;
 
-        // Use QuickNode RPC endpoint
         const connection = new solanaWeb3.Connection(
           "https://silent-fluent-diamond.solana-mainnet.quiknode.pro/bdf6a6133f8736f5bf9097f4628841fe18b60bcc",
           { commitment: "confirmed", disableRetryOnRateLimit: false }
         );
 
-        // Validate token mint address format
         try {
-          new solanaWeb3.PublicKey(TOKEN_MINT); // Will throw if invalid
+          new solanaWeb3.PublicKey(TOKEN_MINT);
         } catch (formatError) {
           console.error("Invalid mint address format:", formatError);
           statusDiv.textContent = "Error: LetsBONK token mint address is malformed.";
           return;
         }
 
-        // Verify token mint exists
         statusDiv.textContent += " Validating LetsBONK token mint...";
         try {
           const mintInfo = await connection.getParsedAccountInfo(TOKEN_MINT);
@@ -114,7 +134,6 @@
           return;
         }
 
-        // Get token accounts for the specific mint
         statusDiv.textContent += " Checking LetsBONK token balance...";
         const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
           publicKey,
@@ -133,9 +152,38 @@
           }
         }
 
-        statusDiv.textContent = tokenBalance > 0
-          ? `✅ You hold ${tokenBalance} LetsBONK tokens!`
-          : "❌ No LetsBONK tokens found in wallet.";
+        balanceDiv.textContent = `<strong>Balance: ${tokenBalance} LetsBONK</strong>`;
+        statusDiv.textContent = getCompliment(tokenBalance);
+
+        function getCompliment(balance) {
+          if (balance === 1) {
+            return "Hmm, just 1 LetsBONK? Curious, why so few?";
+          } else if (balance > 1 && balance <= 10) {
+            const compliments = [
+              "Nice start with your LetsBONK! Maybe take it slow in crypto?",
+              "A few LetsBONK—great taste, but crypto might not be your full-time gig yet!",
+              "You’ve got some LetsBONK! Perhaps crypto’s a gentle hobby for now?"
+            ];
+            return compliments[Math.floor(Math.random() * compliments.length)];
+          } else if (balance > 10 && balance <= 100) {
+            const compliments = [
+              "Wow, over 10 LetsBONK! You’re doing well—maybe crypto isn’t your calling, but it’s fun!",
+              "More than 10 LetsBONK? Impressive, though you might enjoy it more outside crypto!",
+              "Over 10 LetsBONK—nice stash! Crypto might be a sideline for you, no pressure!"
+            ];
+            return compliments[Math.floor(Math.random() * compliments.length)];
+          } else if (balance > 100 && balance <= ONE_PERCENT) {
+            const compliments = [
+              "Over 100 LetsBONK? That’s cool! Have you thought about grabbing more?",
+              "Nice, more than 100 LetsBONK! Ever considered adding to your stack?",
+              "100+ LetsBONK—awesome! Maybe pick up a few more when you can?"
+            ];
+            return compliments[Math.floor(Math.random() * compliments.length)];
+          } else if (balance > ONE_PERCENT) {
+            return "With over 1% of LetsBONK (1 million+), you’re a powerhouse! You could shape the project’s direction—exciting times ahead!";
+          }
+          return "❌ No LetsBONK tokens found in wallet.";
+        }
       } catch (err) {
         console.error("Error during connection or query:", err);
         if (err.code === 4001) {
@@ -152,10 +200,8 @@
       }
     }
 
-    // Handle connection on button click
     connectBtn.addEventListener("click", checkPhantomAndConnect);
 
-    // Auto-connect if wallet is already connected
     window.addEventListener("load", async () => {
       if (window.solana && window.solana.isPhantom) {
         try {
