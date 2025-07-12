@@ -71,23 +71,44 @@
         const publicKey = resp.publicKey;
         statusDiv.textContent = `Connected: ${publicKey.toBase58().slice(0, 6)}...`;
 
-        // Use a reliable RPC endpoint (fallback to QuickNode or Alchemy if needed)
+        // Use a reliable RPC endpoint with fallback
         const connection = new solanaWeb3.Connection(
           "https://api.mainnet-beta.solana.com",
           { commitment: "confirmed", disableRetryOnRateLimit: false }
         );
 
+        // Validate token mint address format
+        try {
+          new solanaWeb3.PublicKey(TOKEN_MINT); // Will throw if invalid
+        } catch (formatError) {
+          console.error("Invalid mint address format:", formatError);
+          statusDiv.textContent = "Error: Token mint address is malformed.";
+          return;
+        }
+
         // Verify token mint exists
+        statusDiv.textContent += " Validating token mint...";
         try {
           const mintInfo = await connection.getParsedAccountInfo(TOKEN_MINT);
-          if (!mintInfo.value || mintInfo.value.data.program !== "spl-token") {
-            statusDiv.textContent = "Error: Invalid token mint address.";
-            console.error("Invalid token mint:", TOKEN_MINT.toBase58());
+          if (!mintInfo.value) {
+            statusDiv.textContent = "Error: Token mint does not exist on Mainnet.";
+            console.error("Mint not found:", TOKEN_MINT.toBase58());
+            return;
+          }
+          if (mintInfo.value.data.program !== "spl-token") {
+            statusDiv.textContent = "Error: Address is not a valid SPL token mint.";
+            console.error("Invalid token mint program:", TOKEN_MINT.toBase58());
             return;
           }
         } catch (mintError) {
           console.error("Mint validation error:", mintError);
-          statusDiv.textContent = "Error: Failed to validate token mint.";
+          if (mintError.message.includes("rate limit")) {
+            statusDiv.textContent = "Error: RPC rate limit exceeded. Try again later.";
+          } else if (mintError.message.includes("network")) {
+            statusDiv.textContent = "Error: Network issue with Solana RPC.";
+          } else {
+            statusDiv.textContent = "Error: Failed to validate token mint.";
+          }
           return;
         }
 
@@ -120,7 +141,7 @@
         } else if (err.message.includes("rate limit")) {
           statusDiv.textContent = "Error: Solana RPC rate limit exceeded. Try again later.";
         } else if (err.message.includes("network")) {
-          statusDiv.textContent = "Error: Network issue with Solana RPC. Check your connection.";
+          statusDiv.textContent = "Error: Network issue with Solana RPC.";
         } else {
           statusDiv.textContent = "Error: Failed to fetch token balance.";
         }
