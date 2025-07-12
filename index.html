@@ -10,8 +10,21 @@
       color: white;
       font-family: Arial, sans-serif;
       text-align: center;
-      padding: 60px 20px;
       position: relative;
+      min-height: 100vh; /* Ensure body takes full viewport height */
+      display: flex;
+      flex-direction: column;
+      justify-content: center; /* Center content vertically */
+      align-items: center; /* Center content horizontally */
+      margin: 0;
+      padding: 20px; /* Reduced padding to avoid excessive spacing */
+    }
+
+    .content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: -100px; /* Adjust to shift content slightly higher for balance */
     }
 
     img {
@@ -87,17 +100,18 @@
 </head>
 <body>
   <div id="nav-controls">
-    <button id="home" class="nav-button">Home</button>
+    <button id="home" class="nav-button">Solmemetics</button>
     <button id="whitepaper" class="nav-button">Whitepaper</button>
   </div>
   <div id="controls">
     <div id="balance">Balance: 0 SMM</div>
     <button id="connect" class="connect-button">Connect</button>
   </div>
-  <img src="your-image.png" alt="Coming Soon" />
-  <h1>Solmemetics</h1>
-  <h4>Soon.</h4>
-  <div id="status"></div>
+  <div class="content">
+    <img src="your-image.png" alt="Coming Soon" />
+    <h1>Launch imminent</h1>
+    <div id="status"></div>
+  </div>
 
   <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
 
