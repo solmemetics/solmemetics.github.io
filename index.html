@@ -1,9 +1,107 @@
-<!doctype html>
-<html>
-  <head>
-    <title>This is the title of the webpage!</title>
-  </head>
-  <body>
-    <p>This is an example paragraph. Anything in the <strong>body</strong> tag will appear on the page, just like this <strong>p</strong> tag and its contents.</p>
-  </body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Coming Soon</title>
+  <style>
+    body {
+      background-color: #000;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 60px 20px;
+      margin: 0;
+    }
+
+    img {
+      max-width: 300px;
+      height: auto;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 40px;
+    }
+
+    button {
+      padding: 12px 24px;
+      font-size: 16px;
+      background: #fff;
+      color: #000;
+      border: none;
+      border-radius: 9999px;
+      cursor: pointer;
+    }
+
+    #status {
+      margin-top: 20px;
+      font-size: 16px;
+      color: #ccc;
+    }
+  </style>
+</head>
+<body>
+
+  <img src="https://i.postimg.cc/nh3JDx55/300px-Memetics-portrait.webp" alt="Coming Soon" />
+  <h1>SOLMEMETICS</h1>
+  <h2>Coming Soon</h2>
+  <button id="connect">Connect Phantom</button>
+  <div id="status"></div>
+
+  <script type="module">
+    import {
+      Connection,
+      PublicKey
+    } from "https://cdn.skypack.dev/@solana/web3.js";
+
+    const TOKEN_MINT = new PublicKey("YOUR_TOKEN_MINT_HERE"); // Replace this
+
+    const connectBtn = document.getElementById("connect");
+    const statusDiv = document.getElementById("status");
+
+    connectBtn.addEventListener("click", async () => {
+      if (!window.solana || !window.solana.isPhantom) {
+        statusDiv.textContent = "Phantom Wallet not found.";
+        return;
+      }
+
+      try {
+        const resp = await window.solana.connect();
+        const publicKey = resp.publicKey;
+        statusDiv.textContent = `Connected: ${publicKey.toBase58()}`;
+
+        const connection = new Connection("https://api.mainnet-beta.solana.com");
+
+        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+          publicKey,
+          {
+            programId: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
+          }
+        );
+
+        let hasToken = false;
+        for (const { account } of tokenAccounts.value) {
+          const info = account.data.parsed.info;
+          if (
+            info.mint === TOKEN_MINT.toBase58() &&
+            parseFloat(info.tokenAmount.uiAmount) > 0
+          ) {
+            hasToken = true;
+            break;
+          }
+        }
+
+        statusDiv.textContent = hasToken
+          ? "✅ You own the token!"
+          : "❌ Token not found in wallet.";
+      } catch (err) {
+        console.error(err);
+        statusDiv.textContent = "Connection failed.";
+      }
+    });
+  </script>
+
+</body>
 </html>
