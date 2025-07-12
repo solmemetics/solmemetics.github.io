@@ -57,7 +57,7 @@
 </head>
 <body>
   <div id="controls">
-    <div id="balance">Balance: 0 LetsBONK</div>
+    <div id="balance">Balance: 0 SMM</div>
     <button id="connect">Connect</button>
   </div>
   <img src="your-image.png" alt="Coming Soon" />
@@ -68,7 +68,7 @@
   <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
 
   <script>
-    // LetsBONK token mint address
+    // SMM token mint address
     const TOKEN_MINT = new solanaWeb3.PublicKey("CDBdbNqmrLu1PcgjrFG52yxg71QnFhBZcUE6PSFdbonk");
     const TOTAL_SUPPLY = 100000000; // 100 million tokens
     const ONE_PERCENT = TOTAL_SUPPLY * 0.01; // 1% of total supply
@@ -99,20 +99,20 @@
           new solanaWeb3.PublicKey(TOKEN_MINT);
         } catch (formatError) {
           console.error("Invalid mint address format:", formatError);
-          statusDiv.textContent = "Error: LetsBONK token mint address is malformed.";
+          statusDiv.textContent = "Error: SMM token mint address is malformed.";
           return;
         }
 
-        statusDiv.textContent += " Validating LetsBONK token mint...";
+        statusDiv.textContent += " Validating SMM token mint...";
         try {
           const mintInfo = await connection.getParsedAccountInfo(TOKEN_MINT);
           if (!mintInfo.value) {
-            statusDiv.textContent = "Error: LetsBONK token mint does not exist on Mainnet.";
+            statusDiv.textContent = "Error: SMM token mint does not exist on Mainnet.";
             console.error("Mint not found:", TOKEN_MINT.toBase58());
             return;
           }
           if (mintInfo.value.data.program !== "spl-token") {
-            statusDiv.textContent = "Error: Address is not a valid SPL token mint for LetsBONK.";
+            statusDiv.textContent = "Error: Address is not a valid SPL token mint for SMM.";
             console.error("Invalid token mint program:", TOKEN_MINT.toBase58());
             return;
           }
@@ -125,12 +125,12 @@
           } else if (mintError.message.includes("network")) {
             statusDiv.textContent = "Error: Network issue with Solana RPC.";
           } else {
-            statusDiv.textContent = "Error: Failed to validate LetsBONK token mint.";
+            statusDiv.textContent = "Error: Failed to validate SMM token mint.";
           }
           return;
         }
 
-        statusDiv.textContent += " Checking LetsBONK token balance...";
+        statusDiv.textContent += " Checking SMM token balance...";
         const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
           publicKey,
           {
@@ -148,41 +148,41 @@
           }
         }
 
-        balanceDiv.textContent = `Balance: ${tokenBalance.toFixed(2)} LetsBONK`;
+        balanceDiv.textContent = `Balance: ${tokenBalance.toFixed(2)} SMM`;
         statusDiv.textContent = getCompliment(tokenBalance);
 
         function getCompliment(balance) {
           if (balance < 1 && balance > 0) {
             return "Thats not even one token, are you sure you have the right wallet?";
           } else if (balance === 1) {
-            return "Hmm, just 1 LetsBONK? Curious, why so few?";
+            return "Hmm, just 1 SMM? Curious, why so few?";
           } else if (balance > 1 && balance <= 10) {
             const compliments = [
-              "Nice start with your LetsBONK! Maybe take it slow in crypto?",
-              "A few LetsBONK - great taste, but crypto might not be your full-time gig yet!",
-              "You’ve got some LetsBONK! Perhaps crypto’s a gentle hobby for now?"
+              "Nice start with your SMM! Maybe take it slow in crypto?",
+              "A few SMM - great taste, but crypto might not be your full-time gig yet!",
+              "You’ve got some SMM! Perhaps crypto’s a gentle hobby for now?"
             ];
             return compliments[Math.floor(Math.random() * compliments.length)];
           } else if (balance > 10 && balance <= 100) {
             const compliments = [
-              "Wow, over 10 LetsBONK! You’re doing well - maybe crypto isn’t your calling, but it’s fun!",
-              "More than 10 LetsBONK? Impressive, though you might enjoy it more outside crypto!",
-              "Over 10 LetsBONK - nice stash! Crypto might be a sideline for you, no pressure!"
+              "Wow, over 10 SMM! You’re doing well - maybe crypto isn’t your calling, but it’s fun!",
+              "More than 10 SMM? Impressive, though you might enjoy it more outside crypto!",
+              "Over 10 SMM - nice stash! Crypto might be a sideline for you, no pressure!"
             ];
             return compliments[Math.floor(Math.random() * compliments.length)];
           } else if (balance > 100 && balance <= ONE_PERCENT) {
             const compliments = [
-              "Over 100 LetsBONK? That’s cool! Have you thought about grabbing more?",
-              "Nice, more than 100 LetsBONK! Ever considered adding to your stack?",
-              "100+ LetsBONK - awesome! Maybe pick up a few more when you can?"
+              "Over 100 SMM? That’s cool! Have you thought about grabbing more?",
+              "Nice, more than 100 SMM! Ever considered adding to your stack?",
+              "100+ SMM - awesome! Maybe pick up a few more when you can?"
             ];
             return compliments[Math.floor(Math.random() * compliments.length)];
           } else if (balance > ONE_PERCENT) {
-            return "With over 1% of LetsBONK (1 million+), you’re a powerhouse! You could shape the project’s direction - exciting times ahead!";
+            return "With over 1% of SMM (1 million+), you’re a powerhouse! You could shape the project’s direction - exciting times ahead!";
           } else if (balance === 0) {
             return "No tokens found in this wallet, this definitely can't be the right wallet";
           }
-          return "Error determining LetsBONK balance.";
+          return "Error determining SMM balance.";
         }
 
         // Change button to disconnect and enable disconnect functionality
@@ -191,7 +191,7 @@
           try {
             await provider.disconnect();
             connectBtn.textContent = "Connect";
-            balanceDiv.textContent = "Balance: 0 LetsBONK";
+            balanceDiv.textContent = "Balance: 0 SMM";
             statusDiv.textContent = "";
             connectBtn.onclick = checkPhantomAndConnect;
           } catch (err) {
@@ -210,7 +210,7 @@
         } else if (err.message.includes("network")) {
           statusDiv.textContent = "Error: Network issue with Solana RPC.";
         } else {
-          statusDiv.textContent = "Error: Failed to fetch LetsBONK token balance.";
+          statusDiv.textContent = "Error: Failed to fetch SMM token balance.";
         }
       }
     }
