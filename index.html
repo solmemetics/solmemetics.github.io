@@ -50,8 +50,8 @@
   <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
 
   <script>
-    // Replace with your actual SPL token mint address
-    const TOKEN_MINT = new solanaWeb3.PublicKey("So11111111111111111111111111111111111111112"); // Wrapped SOL (example)
+    // LetsBONK token mint address
+    const TOKEN_MINT = new solanaWeb3.PublicKey("CDBdbNqmrLu1PcgjrFG52yxg71QnFhBZcUE6PSFdbonk");
 
     const connectBtn = document.getElementById("connect");
     const statusDiv = document.getElementById("status");
@@ -82,38 +82,38 @@
           new solanaWeb3.PublicKey(TOKEN_MINT); // Will throw if invalid
         } catch (formatError) {
           console.error("Invalid mint address format:", formatError);
-          statusDiv.textContent = "Error: Token mint address is malformed.";
+          statusDiv.textContent = "Error: LetsBONK token mint address is malformed.";
           return;
         }
 
         // Verify token mint exists
-        statusDiv.textContent += " Validating token mint...";
+        statusDiv.textContent += " Validating LetsBONK token mint...";
         try {
           const mintInfo = await connection.getParsedAccountInfo(TOKEN_MINT);
           if (!mintInfo.value) {
-            statusDiv.textContent = "Error: Token mint does not exist on Mainnet.";
+            statusDiv.textContent = "Error: LetsBONK token mint does not exist on Mainnet.";
             console.error("Mint not found:", TOKEN_MINT.toBase58());
             return;
           }
           if (mintInfo.value.data.program !== "spl-token") {
-            statusDiv.textContent = "Error: Address is not a valid SPL token mint.";
+            statusDiv.textContent = "Error: Address is not a valid SPL token mint for LetsBONK.";
             console.error("Invalid token mint program:", TOKEN_MINT.toBase58());
             return;
           }
         } catch (mintError) {
           console.error("Mint validation error:", mintError);
           if (mintError.message.includes("rate limit")) {
-            statusDiv.textContent = "Error: RPC rate limit exceeded. Try again later.";
+            statusDiv.textContent = "Error: Solana RPC rate limit exceeded. Try again later.";
           } else if (mintError.message.includes("network")) {
             statusDiv.textContent = "Error: Network issue with Solana RPC.";
           } else {
-            statusDiv.textContent = "Error: Failed to validate token mint.";
+            statusDiv.textContent = "Error: Failed to validate LetsBONK token mint.";
           }
           return;
         }
 
         // Get token accounts for the specific mint
-        statusDiv.textContent += " Checking token balance...";
+        statusDiv.textContent += " Checking LetsBONK token balance...";
         const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
           publicKey,
           {
@@ -132,8 +132,8 @@
         }
 
         statusDiv.textContent = tokenBalance > 0
-          ? `✅ You hold ${tokenBalance} tokens!`
-          : "❌ No tokens found in wallet.";
+          ? `✅ You hold ${tokenBalance} LetsBONK tokens!`
+          : "❌ No LetsBONK tokens found in wallet.";
       } catch (err) {
         console.error("Error during connection or query:", err);
         if (err.code === 4001) {
@@ -143,7 +143,7 @@
         } else if (err.message.includes("network")) {
           statusDiv.textContent = "Error: Network issue with Solana RPC.";
         } else {
-          statusDiv.textContent = "Error: Failed to fetch token balance.";
+          statusDiv.textContent = "Error: Failed to fetch LetsBONK token balance.";
         }
       }
     }
