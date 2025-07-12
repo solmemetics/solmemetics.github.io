@@ -50,20 +50,15 @@
       gap: 10px;
     }
 
-    #connect {
-      font-weight: bold;
-    }
-
     #balance {
-      font-weight: bold;
-      color: white;
+      margin-right: 10px;
     }
   </style>
 </head>
 <body>
   <div id="controls">
-    <button id="connect"><strong>Connect</strong></button>
-    <div id="balance"><strong>Balance: 0 LetsBONK</strong></div>
+    <div id="balance">Balance: 0 LetsBONK</div>
+    <button id="connect">Connect</button>
   </div>
   <img src="your-image.png" alt="Coming Soon" />
   <h1>Coming Soon</h1>
@@ -152,38 +147,57 @@
           }
         }
 
-        balanceDiv.textContent = `<strong>Balance: ${tokenBalance} LetsBONK</strong>`;
+        balanceDiv.textContent = `Balance: ${tokenBalance.toFixed(2)} LetsBONK`;
         statusDiv.textContent = getCompliment(tokenBalance);
 
         function getCompliment(balance) {
-          if (balance === 1) {
+          if (balance < 1 && balance > 0) {
+            return "Thats not even one token, are you sure you have the right wallet?";
+          } else if (balance === 1) {
             return "Hmm, just 1 LetsBONK? Curious, why so few?";
           } else if (balance > 1 && balance <= 10) {
             const compliments = [
               "Nice start with your LetsBONK! Maybe take it slow in crypto?",
-              "A few LetsBONK—great taste, but crypto might not be your full-time gig yet!",
+              "A few LetsBONK - great taste, but crypto might not be your full-time gig yet!",
               "You’ve got some LetsBONK! Perhaps crypto’s a gentle hobby for now?"
             ];
             return compliments[Math.floor(Math.random() * compliments.length)];
           } else if (balance > 10 && balance <= 100) {
             const compliments = [
-              "Wow, over 10 LetsBONK! You’re doing well—maybe crypto isn’t your calling, but it’s fun!",
+              "Wow, over 10 LetsBONK! You’re doing well - maybe crypto isn’t your calling, but it’s fun!",
               "More than 10 LetsBONK? Impressive, though you might enjoy it more outside crypto!",
-              "Over 10 LetsBONK—nice stash! Crypto might be a sideline for you, no pressure!"
+              "Over 10 LetsBONK - nice stash! Crypto might be a sideline for you, no pressure!"
             ];
             return compliments[Math.floor(Math.random() * compliments.length)];
           } else if (balance > 100 && balance <= ONE_PERCENT) {
             const compliments = [
               "Over 100 LetsBONK? That’s cool! Have you thought about grabbing more?",
               "Nice, more than 100 LetsBONK! Ever considered adding to your stack?",
-              "100+ LetsBONK—awesome! Maybe pick up a few more when you can?"
+              "100+ LetsBONK - awesome! Maybe pick up a few more when you can?"
             ];
             return compliments[Math.floor(Math.random() * compliments.length)];
           } else if (balance > ONE_PERCENT) {
-            return "With over 1% of LetsBONK (1 million+), you’re a powerhouse! You could shape the project’s direction—exciting times ahead!";
+            return "With over 1% of LetsBONK (1 million+), you’re a powerhouse! You could shape the project’s direction - exciting times ahead!";
+          } else if (balance === 0) {
+            return "No tokens found in this wallet, this definitely can't be the right wallet";
           }
-          return "❌ No LetsBONK tokens found in wallet.";
+          return "Error determining LetsBONK balance.";
         }
+
+        // Change button to disconnect and enable disconnect functionality
+        connectBtn.textContent = "Disconnect";
+        connectBtn.onclick = async () => {
+          try {
+            await provider.disconnect();
+            connectBtn.textContent = "Connect";
+            balanceDiv.textContent = "Balance: 0 LetsBONK";
+            statusDiv.textContent = "";
+            connectBtn.onclick = checkPhantomAndConnect;
+          } catch (err) {
+            console.error("Disconnect error:", err);
+            statusDiv.textContent = "Error disconnecting from Phantom wallet.";
+          }
+        };
       } catch (err) {
         console.error("Error during connection or query:", err);
         if (err.code === 4001) {
