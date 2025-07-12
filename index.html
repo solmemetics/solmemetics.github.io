@@ -148,7 +148,18 @@
           }
         }
 
-        balanceDiv.textContent = `Balance: ${tokenBalance.toFixed(2)} SMM`;
+        // Display balance with up to 9 decimals, trimming trailing zeros
+        const balanceString = tokenBalance.toString();
+        const [integerPart, decimalPart] = balanceString.split('.');
+        let displayBalance = integerPart;
+        if (decimalPart) {
+          const trimmedDecimals = decimalPart.replace(/0+$/, '').slice(0, 9);
+          if (trimmedDecimals) {
+            displayBalance += '.' + trimmedDecimals;
+          }
+        }
+        balanceDiv.textContent = `Balance: ${displayBalance || 0} SMM`;
+
         statusDiv.textContent = getCompliment(tokenBalance);
 
         function getCompliment(balance) {
