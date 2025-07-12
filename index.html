@@ -47,54 +47,77 @@
   <button id="connect">Connect Phantom</button>
   <div id="status"></div>
 
-  <script src="https://unpkg.com/@solana/web3.js@1.93.5/lib/index.iife.min.js"></script>
+  <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
 
   <script>
-    const TOKEN_MINT = new solanaWeb3.PublicKey("So11111111111111111111111111111111111111112"); // Replace with your SPL token
+    const TOKEN_MINT = new solanaWeb3.PublicKey("So11111111111111111111111111111111111111112"); // Replace with your actual SPL token mint address
 
     const connectBtn = document.getElementById("connect");
     const statusDiv = document.getElementById("status");
 
-    connectBtn.addEventListener("click", async () => {
-      const provider = window.solana;
-
-      if (!provider || !provider.isPhantom) {
-        statusDiv.textContent = "Phantom Wallet not found.";
+    async function checkPhantomAndConnect() {
+      // Check if Phantom is available
+      if (!window.solana || !window.solana.isPhantom) {
+        statusDiv.textContent = "Phantom Wallet not found. Please install Phantom.";
+        window.open("https://phantom.app/", "_blank");
         return;
       }
 
       try {
+        // Attempt to connect to Phantom
+        const provider = window.solana;
         const resp = await provider.connect();
         const publicKey = resp.publicKey;
         statusDiv.textContent = `Connected: ${publicKey.toBase58()}`;
 
-        const connection = new solanaWeb3.Connection("https://api.mainnet-beta.solana.com");
+        // Connect to Solana mainnet
+        const connection = new solanaWeb3.Connection("https://api.mainnet-beta.solana.com", "confirmed");
 
+        // Get token accounts owned by the user
         const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
           publicKey,
           {
-            programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
+            mint: TOKEN_MINT, // Filter by specific token mint
+            programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"), // SPL Token Program
           }
         );
 
-        let hasToken = false;
+        let tokenBalance = 0;
         for (const { account } of tokenAccounts.value) {
           const info = account.data.parsed.info;
-          if (
-            info.mint === TOKEN_MINT.toBase58() &&
-            parseFloat(info.tokenAmount.uiAmount) > 0
-          ) {
-            hasToken = true;
+          if (info.mint === TOKEN_MINT.toBase58()) {
+            tokenBalance = parseFloat(info.tokenAmount.uiAmount);
             break;
           }
         }
 
-        statusDiv.textContent = hasToken
-          ? "✅ You own the token!"
-          : "❌ Token not found in wallet.";
+        statusDiv.textContent = tokenBalance > 0
+          ? `✅ You hold ${tokenBalance} tokens!`
+          : "❌ No tokens found in wallet.";
       } catch (err) {
-        console.error(err);
-        statusDiv.textContent = "Connection failed.";
+        console.error("Error:", err);
+        if (err.code === 4001) {
+          statusDiv.textContent = "Connection rejected by user.";
+        } else {
+          statusDiv.textContent = "Failed to connect to Phantom Wallet.";
+        }
+      }
+    }
+
+    // Handle connection on button click
+    connectBtn.addEventListener("click", checkPhantomAndConnect);
+
+    // Auto-connect if wallet is already connected
+    window.addEventListener("load", async () => {
+      if (window.solana && window.solana.isPhantom) {
+        try {
+          const provider = window.solana;
+          if (provider.isConnected) {
+            await checkPhantomAndConnect();
+          }
+        } catch (err) {
+          console.error("Auto-connect error:", err);
+        }
       }
     });
   </script>
