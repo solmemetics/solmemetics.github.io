@@ -119,11 +119,22 @@
     .social-icon:hover {
       opacity: 0.8; /* Subtle hover effect */
     }
+
+    /* Style for donation text */
+    .donation-text {
+      position: fixed;
+      bottom: 20px;
+      width: 100%;
+      text-align: center;
+      font-size: 14px;
+      color: #ccc;
+      font-family: Arial, sans-serif;
+    }
   </style>
 </head>
 <body>
   <div id="nav-controls">
-    <button id="home" class="nav-button">Home</button>
+    <button id="home" class="nav-button">Solmemetics</button>
     <button id="whitepaper" class="nav-button">Whitepaper</button>
   </div>
   <div id="controls">
@@ -144,6 +155,9 @@
       </a>
     </div>
     <div id="status"></div>
+  </div>
+  <div class="donation-text">
+    Help fund the project by donating Solana/USDC to solmemetics.sol
   </div>
 
   <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
@@ -213,7 +227,7 @@
           if (mintError.message.includes("403")) {
             statusDiv.textContent = "Error: RPC access forbidden (403). Please try again or use a different RPC.";
           } else if (mintError.message.includes("rate limit")) {
-            statusDisv.textContent = "Error: Solana RPC rate limit exceeded. Try again later.";
+            statusDiv.textContent = "Error: Solana RPC rate limit exceeded. Try again later.";
           } else if (mintError.message.includes("network")) {
             statusDiv.textContent = "Error: Network issue with Solana RPC.";
           } else {
