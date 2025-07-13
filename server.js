@@ -9,7 +9,7 @@ app.use(express.json());
 // Serve static files from the public directory
 app.use(express.static("public"));
 
-// Feedback endpoint
+// Feedback submission endpoint
 app.post("/feedback", async (req, res) => {
   try {
     const { publicKey, encryptedData, timestamp } = req.body;
@@ -18,6 +18,18 @@ app.post("/feedback", async (req, res) => {
   } catch (err) {
     console.error("Error storing feedback:", err);
     res.status(500).json({ error: "Failed to store feedback" });
+  }
+});
+
+// Feedback retrieval endpoint
+app.get("/get-feedback", async (req, res) => {
+  try {
+    const data = await fs.readFile("feedback.json", "utf8");
+    const feedback = data.split("\n").filter(line => line).map(line => JSON.parse(line));
+    res.status(200).json(feedback);
+  } catch (err) {
+    console.error("Error fetching feedback:", err);
+    res.status(500).json({ error: "Failed to fetch feedback" });
   }
 });
 
