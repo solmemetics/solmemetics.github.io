@@ -398,13 +398,13 @@
           )
         );
 
-        const { blockhash } = await connection.getLatestBlockhash();
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
         transaction.recentBlockhash = blockhash;
         transaction.feePayer = fromPubkey;
 
         const signedTransaction = await provider.signTransaction(transaction);
         const txId = await connection.sendRawTransaction(signedTransaction.serialize());
-        await connection.confirmTransaction({ signature: txId, blockhash, lastValidBlockHeight: (await connection.getLatestBlockhash()).lastValidBlockHeight });
+        await connection.confirmTransaction({ signature: txId, blockhash, lastValidBlockHeight });
         statusDiv.textContent = "Token transfer successful!";
         return true;
       } catch (err) {
