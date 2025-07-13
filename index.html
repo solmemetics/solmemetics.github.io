@@ -388,18 +388,25 @@
 
         // Change button to disconnect and enable disconnect functionality
         connectBtn.textContent = "Disconnect";
-        connectBtn.onclick = async () => {
+        connectBtn.removeEventListener("click", checkPhantomAndConnect); // Remove connect handler
+        const disconnectHandler = async () => {
           try {
             await provider.disconnect();
             connectBtn.textContent = "Connect";
             balanceDiv.textContent = "Balance: 0 SMM";
-            statusDiv.textContent = "";
-            connectBtn.onclick = checkPhantomAndConnect;
+            statusDiv.textContent = "Disconnected from Phantom Wallet.";
+            connectBtn.removeEventListener("click", disconnectHandler); // Remove disconnect handler
+            connectBtn.addEventListener("click", checkPhantomAndConnect); // Re-attach connect handler
           } catch (err) {
             console.error("Disconnect error:", err);
-            statusDiv.textContent = "Error disconnecting from Phantom wallet.";
+            statusDiv.textContent = "Error disconnecting from Phantom Wallet.";
+            // Ensure button is reset even on error
+            connectBtn.textContent = "Connect";
+            connectBtn.removeEventListener("click", disconnectHandler);
+            connectBtn.addEventListener("click", checkPhantomAndConnect);
           }
         };
+        connectBtn.addEventListener("click", disconnectHandler); // Attach disconnect handler
       } catch (err) {
         console.error("Error during connection or query:", err);
         if (err.code === 4001) {
