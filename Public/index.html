@@ -333,6 +333,7 @@
         return CryptoJS.AES.encrypt(JSON.stringify(data), ENCRYPTION_KEY).toString();
       } catch (err) {
         console.error("Encryption failed:", err);
+        statusDiv.textContent = "Error: Failed to encrypt feedback.";
         return null;
       }
     }
@@ -340,10 +341,7 @@
     // Feedback submission
     async function submitFeedback(publicKey, username, feedback) {
       const encryptedData = encryptFeedback({ username, feedback });
-      if (!encryptedData) {
-        statusDiv.textContent = "Error: Failed to encrypt feedback.";
-        return;
-      }
+      if (!encryptedData) return;
 
       try {
         const response = await fetch("/feedback", {
@@ -355,15 +353,13 @@
             timestamp: new Date().toISOString()
           })
         });
-        if (!response.ok) {
-          throw new Error("Failed to submit feedback to server.");
-        }
+        if (!response.ok) throw new Error("Failed to submit feedback to server.");
         statusDiv.textContent = "Feedback submitted successfully!";
         usernameInput.value = "";
         feedbackInput.value = "";
       } catch (err) {
         console.error("Feedback submission error:", err);
-        statusDiv.textContent = "Error: Failed to submit feedback.";
+        statusDiv.textContent = `Error: Failed to submit feedback - ${err.message}`;
       }
     }
 
@@ -371,9 +367,7 @@
     async function fetchFeedback() {
       try {
         const response = await fetch("/get-feedback");
-        if (!response.ok) {
-          throw new Error("Failed to fetch feedback.");
-        }
+        if (!response.ok) throw new Error("Failed to fetch feedback.");
         const feedbackData = await response.json();
         feedbackList.innerHTML = "";
         if (feedbackData.length === 0) {
@@ -381,16 +375,21 @@
           return;
         }
         feedbackData.forEach(item => {
-          const decrypted = CryptoJS.AES.decrypt(item.encryptedData, ENCRYPTION_KEY).toString(CryptoJS.enc.Utf8);
-          const { username, feedback } = JSON.parse(decrypted);
-          const div = document.createElement("div");
-          div.className = "feedback-item";
-          div.innerHTML = `<strong>${username || "Anonymous"}</strong> (${item.publicKey.slice(0, 6)}...): ${feedback} <br><small>${new Date(item.timestamp).toLocaleString()}</small>`;
-          feedbackList.appendChild(div);
+          try {
+            const decrypted = CryptoJS.AES.decrypt(item.encryptedData, ENCRYPTION_KEY).toString(CryptoJS.enc.Utf8);
+            const { username, feedback } = JSON.parse(decrypted);
+            const div = document.createElement("div");
+            div.className = "feedback-item";
+            div.innerHTML = `<strong>${username || "Anonymous"}</strong> (${item.publicKey.slice(0, 6)}...): ${feedback} <br><small>${new Date(item.timestamp).toLocaleString()}</small>`;
+            feedbackList.appendChild(div);
+          } catch (err) {
+            console.error("Decryption error for item:", item, err);
+            feedbackList.innerHTML += `<p>Error decrypting feedback from ${item.publicKey.slice(0, 6)}...</p>`;
+          }
         });
       } catch (err) {
         console.error("Fetch feedback error:", err);
-        statusDiv.textContent = "Error: Failed to fetch feedback.";
+        statusDiv.textContent = `Error: Failed to fetch feedback - ${err.message}`;
       }
     }
 
@@ -454,7 +453,7 @@
         return true;
       } catch (err) {
         console.error("Token transfer error:", err);
-        statusDiv.textContent = "Error: Failed to transfer SMM tokens.";
+        statusDiv.textContent = `Error: Failed to transfer SMM tokens - ${err.message}`;
         return false;
       }
     }
@@ -472,21 +471,17 @@
 
       try {
         const provider = window.solana;
-        const resp = await provider.connect();
-        const publicKey = resp.publicKey;
+        await provider.connect({ onlyIfTrusted: false }); // Ensure fresh connection
+        const publicKey = provider.publicKey;
         statusDiv.textContent = `Connected: ${publicKey.toBase58().slice(0, 6)}...`;
 
-        // Enable feedback form for all users
+        // Enable feedback form
         usernameInput.disabled = false;
         feedbackInput.disabled = false;
         feedbackSubmit.disabled = false;
 
         // Show view feedback button only for launch wallet
-        if (publicKey.toBase58() === LAUNCH_WALLET) {
-          viewFeedbackBtn.style.display = "block";
-        } else {
-          viewFeedbackBtn.style.display = "none";
-        }
+        viewFeedbackBtn.style.display = publicKey.toBase58() === LAUNCH_WALLET ? "block" : "none";
 
         const connection = new solanaWeb3.Connection(
           "https://silent-fluent-diamond.solana-mainnet.quiknode.pro/bdf6a6133f8736f5bf9097f4628841fe18b60bcc",
@@ -516,15 +511,7 @@
           }
         } catch (mintError) {
           console.error("Mint validation error:", mintError);
-          if (mintError.message.includes("403")) {
-            statusDiv.textContent = "Error: RPC access forbidden (403). Please try again or use a different RPC.";
-          } else if (mintError.message.includes("rate limit")) {
-            statusDiv.textContent = "Error: Solana RPC rate limit exceeded. Try again later.";
-          } else if (mintError.message.includes("network")) {
-            statusDiv.textContent = "Error: Network issue with Solana RPC.";
-          } else {
-            statusDiv.textContent = "Error: Failed to validate SMM token mint.";
-          }
+          statusDiv.textContent = `Error: Failed to validate SMM token mint - ${mintError.message}`;
           return;
         }
 
@@ -551,49 +538,44 @@
         let displayBalance = integerPart;
         if (decimalPart) {
           const trimmedDecimals = decimalPart.replace(/0+$/, '').slice(0, 9);
-          if (trimmedDecimals) {
-            displayBalance += '.' + trimmedDecimals;
-          }
+          if (trimmedDecimals) displayBalance += '.' + trimmedDecimals;
         }
         balanceDiv.textContent = `Balance: ${displayBalance || 0} SMM`;
 
         statusDiv.textContent = getCompliment(tokenBalance);
 
         function getCompliment(balance) {
-          if (balance < 1 && balance > 0) {
-            return "Thats not even one token, are you sure you have the right wallet?";
-          } else if (balance === 1) {
-            return "Hmm, just 1 SMM? Curious, why so few?";
-          } else if (balance > 1 && balance <= 10) {
+          if (balance < 1 && balance > 0) return "Thats not even one token, are you sure you have the right wallet?";
+          if (balance === 1) return "Hmm, just 1 SMM? Curious, why so few?";
+          if (balance > 1 && balance <= 10) {
             const compliments = [
               "Nice start with your SMM! Maybe take it slow in crypto?",
               "A few SMM - great taste, but crypto might not be your full-time gig yet!",
               "You’ve got some SMM! Perhaps crypto’s a gentle hobby for now?"
             ];
             return compliments[Math.floor(Math.random() * compliments.length)];
-          } else if (balance > 10 && balance <= 100) {
+          }
+          if (balance > 10 && balance <= 100) {
             const compliments = [
               "Wow, over 10 SMM! You’re doing well - maybe crypto isn’t your calling, but it’s fun!",
               "More than 10 SMM? Impressive, though you might enjoy it more outside crypto!",
               "Over 10 SMM - nice stash! Crypto might be a sideline for you, no pressure!"
             ];
             return compliments[Math.floor(Math.random() * compliments.length)];
-          } else if (balance > 100 && balance <= ONE_PERCENT) {
+          }
+          if (balance > 100 && balance <= ONE_PERCENT) {
             const compliments = [
               "Over 100 SMM? That’s cool! Have you thought about grabbing more?",
               "Nice, more than 100 SMM! Ever considered adding to your stack?",
               "100+ SMM - awesome! Maybe pick up a few more when you can?"
             ];
             return compliments[Math.floor(Math.random() * compliments.length)];
-          } else if (balance > ONE_PERCENT) {
-            return "With over 1% of SMM (1 million+), you’re a powerhouse! You could shape the project’s direction - exciting times ahead!";
-          } else if (balance === 0) {
-            return "No tokens found in this wallet, this definitely can't be the right wallet";
           }
-          return "Error determining SMM balance.";
+          if (balance > ONE_PERCENT) return "With over 1% of SMM (1 million+), you’re a powerhouse! You could shape the project’s direction - exciting times ahead!";
+          return "No tokens found in this wallet, this definitely can't be the right wallet";
         }
 
-        // Enable feedback submission
+        // Feedback submission
         feedbackSubmit.onclick = async () => {
           const feedback = feedbackInput.value.trim();
           const username = usernameInput.value.trim();
@@ -610,13 +592,13 @@
           }
         };
 
-        // View feedback button
+        // View feedback
         viewFeedbackBtn.onclick = async () => {
           statusDiv.textContent = "Fetching feedback...";
           await fetchFeedback();
         };
 
-        // Change button to disconnect
+        // Disconnect handler
         connectBtn.textContent = "Disconnect";
         connectBtn.removeEventListener("click", checkPhantomAndConnect);
         const disconnectHandler = async () => {
@@ -634,7 +616,7 @@
             connectBtn.addEventListener("click", checkPhantomAndConnect);
           } catch (err) {
             console.error("Disconnect error:", err);
-            statusDiv.textContent = "Error disconnecting from Phantom Wallet.";
+            statusDiv.textContent = `Error: Failed to disconnect - ${err.message}`;
             connectBtn.textContent = "Connect";
             connectBtn.removeEventListener("click", disconnectHandler);
             connectBtn.addEventListener("click", checkPhantomAndConnect);
@@ -642,18 +624,8 @@
         };
         connectBtn.addEventListener("click", disconnectHandler);
       } catch (err) {
-        console.error("Error during connection or query:", err);
-        if (err.code === 4001) {
-          statusDiv.textContent = "Connection rejected by user.";
-        } else if (err.message.includes("403")) {
-          statusDiv.textContent = "Error: RPC access forbidden (403). Please try again or use a different RPC.";
-        } else if (err.message.includes("rate limit")) {
-          statusDiv.textContent = "Error: Solana RPC rate limit exceeded. Try again later.";
-        } else if (err.message.includes("network")) {
-          statusDiv.textContent = "Error: Network issue with Solana RPC.";
-        } else {
-          statusDiv.textContent = "Error: Failed to fetch SMM token balance.";
-        }
+        console.error("Connection error:", err);
+        statusDiv.textContent = `Error: Failed to connect - ${err.message}`;
         usernameInput.disabled = true;
         feedbackInput.disabled = true;
         feedbackSubmit.disabled = true;
@@ -664,20 +636,20 @@
     connectBtn.addEventListener("click", checkPhantomAndConnect);
 
     window.addEventListener("load", async () => {
-      if (window.solana && window.solana.isPhantom) {
-        try {
-          const provider = window.solana;
-          if (provider.isConnected) {
-            await checkPhantomAndConnect();
-          }
-        } catch (err) {
-          console.error("Auto-connect error:", err);
-          usernameInput.disabled = true;
-          feedbackInput.disabled = true;
-          feedbackSubmit.disabled = true;
-          viewFeedbackBtn.style.display = "none";
-        }
-      } else {
+      if (!window.solana || !window.solana.isPhantom) {
+        statusDiv.textContent = "Phantom Wallet not found. Please install Phantom.";
+        usernameInput.disabled = true;
+        feedbackInput.disabled = true;
+        feedbackSubmit.disabled = true;
+        viewFeedbackBtn.style.display = "none";
+        return;
+      }
+      try {
+        const provider = window.solana;
+        if (provider.isConnected) await checkPhantomAndConnect();
+      } catch (err) {
+        console.error("Auto-connect error:", err);
+        statusDiv.textContent = `Error: Auto-connect failed - ${err.message}`;
         usernameInput.disabled = true;
         feedbackInput.disabled = true;
         feedbackSubmit.disabled = true;

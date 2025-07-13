@@ -10,8 +10,8 @@ app.use(express.json());
 // Serve static files from the public directory
 app.use(express.static(path.join(__dirname, "public")));
 
-// Explicitly serve index.html for the root URL
-app.get("/", (req, res) => {
+// Explicitly serve index.html for the root URL and any unmatched routes
+app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
