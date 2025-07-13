@@ -191,21 +191,18 @@
     <div class="donation-text">
       Help fund the project by donating Solana/USDC to <span id="donation-address" class="copyable">solmemetics.sol</span>
     </div>
-    <div class="version">v0.051</div>
+    <div class="version">v0.050</div>
   </div>
 
   <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
   <script src="spl-token.umd.min.js"></script>
   <script>
-    // Load spl-token and set fallback
+    // Fallback for spl-token
     window.splToken = window.splToken || {};
-    if (typeof window.splToken.getAssociatedTokenAddress !== 'function') {
-      document.getElementById("status").textContent = "Error: spl-token library failed to load. Please contact support.";
-      console.error("spl-token not loaded, expected getAssociatedTokenAddress function missing");
-      throw new Error("spl-token initialization failed");
-    }
-    const { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createTransferInstruction } = splToken;
+    window.splToken.getAssociatedTokenAddress = window.splToken.getAssociatedTokenAddress || function() { throw new Error("spl-token not loaded"); };
+    window.splToken.createAssociatedTokenAccountInstruction = window.splToken.createAssociatedTokenAccountInstruction || function() { throw new Error("spl-token not loaded"); };
+    window.splToken.createTransferInstruction = window.splToken.createTransferInstruction || function() { throw new Error("spl-token not loaded"); };
 
     // Check if libraries loaded
     if (!window.solanaWeb3 || !window.splToken.getAssociatedTokenAddress || !window.CryptoJS) {
@@ -215,6 +212,7 @@
     }
 
     const { PublicKey, Connection } = solanaWeb3;
+    const { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createTransferInstruction } = splToken;
     const TOKEN_MINT = new PublicKey("BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups");
     const TOTAL_SUPPLY = 100000000;
     const ONE_PERCENT = TOTAL_SUPPLY * 0.01;
@@ -222,7 +220,7 @@
     const RECIPIENT_ADDRESS = new PublicKey("Cj64jfCQ2dR5Utf62nMnmEq8fjerAk4u1mZY1Hv53QZA");
     const LAUNCH_WALLET = "Cj64jfCQ2dR5Utf62nMnmEq8fjerAk4u1mZY1Hv53QZA";
     const ENCRYPTION_KEY = "solmemetics-secret-2025"; // Replace with secure key
-    const RPC_ENDPOINT = "https://silent-fluent-diamond.solana-mainnet.quiknode.pro/bdf6a6133f8736f5bf9097f4628841fe18b60bcc/"; // Replace with your RPC URL
+    const RPC_ENDPOINT = "YOUR_QUICKNODE_OR_HELIUS_RPC_URL"; // Replace with your RPC URL
 
     const connectBtn = document.getElementById("connect");
     const statusDiv = document.getElementById("status");
