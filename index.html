@@ -236,22 +236,36 @@
       "Empowering the future of memes on Solana",
       "Join the Solmemetics revolution!",
       "Your gateway to meme-driven crypto",
-      "Empowering the future of memes on Solana",
-      "Join the Solmemetics revolution!",
       "What are you talking about",
       "I smell good",
       "Probably nothing",
       "Damn, you're looking good today",
       "Did you buy yet?"
     ];
-    let taglineIndex = 0;
+
+    function getRandomTagline(excludeIndex) {
+      let newIndex;
+      do {
+        newIndex = Math.floor(Math.random() * taglines.length);
+      } while (newIndex === excludeIndex && taglines.length > 1); // Avoid same tagline if possible
+      return { index: newIndex, tagline: taglines[newIndex] };
+    }
 
     function updateTagline() {
-      taglineDiv.textContent = taglines[taglineIndex];
-      taglineIndex = (taglineIndex + 1) % taglines.length;
+      // Get the last used tagline index from localStorage
+      const lastIndex = localStorage.getItem("lastTaglineIndex");
+      const { index, tagline } = getRandomTagline(lastIndex ? parseInt(lastIndex) : null);
+      
+      // Update the tagline and store the new index
+      taglineDiv.textContent = tagline;
+      localStorage.setItem("lastTaglineIndex", index);
     }
+
+    // Set initial tagline on page load
     updateTagline();
-    setInterval(updateTagline, 50000); // Change every 50 seconds
+
+    // Rotate tagline every 50 seconds
+    setInterval(updateTagline, 50000);
 
     async function checkPhantomAndConnect() {
       if (!window.solana || !window.solana.isPhantom) {
