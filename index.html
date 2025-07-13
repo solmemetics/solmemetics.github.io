@@ -5,8 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Solmemetics</title>
   <style>
+    html {
+      scroll-behavior: smooth; /* Smooth scrolling for in-page links */
+    }
+
     body {
-      background-color: black;
+      background: linear-gradient(180deg, #000000, #1a1a1a); /* Subtle gradient background */
       color: white;
       font-family: Arial, sans-serif;
       text-align: center;
@@ -25,6 +29,12 @@
       flex-direction: column;
       align-items: center;
       margin-top: -100px; /* Adjust to shift content slightly higher for balance */
+      animation: fadeIn 1s ease-in; /* Fade-in animation for content */
+    }
+
+    @keyframes fadeIn {
+      0% { opacity: 0; transform: translateY(20px); }
+      100% { opacity: 1; transform: translateY(0); }
     }
 
     img {
@@ -108,7 +118,7 @@
     .social-icon {
       width: 48px; /* Increased base size for all icons */
       height: 48px;
-      transition: opacity 0.3s; /* Smooth hover effect */
+      transition: transform 0.3s ease, opacity 0.3s ease; /* Smooth hover animation */
     }
 
     .social-icon.jupiter-icon {
@@ -117,7 +127,8 @@
     }
 
     .social-icon:hover {
-      opacity: 0.8; /* Subtle hover effect */
+      opacity: 0.8;
+      transform: scale(1.1); /* Scale up on hover */
     }
 
     /* Style for donation text */
@@ -129,6 +140,23 @@
       font-size: 14px;
       color: #ccc;
       font-family: Arial, sans-serif;
+    }
+
+    .copyable {
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    .copyable:hover {
+      color: #e0e0e0;
+    }
+
+    /* Style for tagline */
+    .tagline {
+      font-size: 18px;
+      color: #ccc;
+      margin-bottom: 20px;
+      min-height: 24px; /* Prevent layout shift */
     }
   </style>
 </head>
@@ -143,21 +171,22 @@
   </div>
   <div class="content">
     <img src="your-image.png" alt="Coming Soon" />
+    <div class="tagline" id="tagline"></div>
     <div class="social-links">
-      <a href="https://t.me/solmemeticsTG" target="_blank">
+      <a href="https://t.me/solmemeticsTG" target="_blank" title="Join our Telegram">
         <img src="telegram.png" alt="Telegram" class="social-icon" />
       </a>
-      <a href="https://jup.ag/tokens/BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups" target="_blank">
+      <a href="https://jup.ag/tokens/BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups" target="_blank" title="Trade on Jupiter">
         <img src="jupiter.png" alt="Jupiter" class="social-icon jupiter-icon" />
       </a>
-      <a href="https://x.com/solmemetics" target="_blank">
+      <a href="https://x.com/solmemetics" target="_blank" title="Follow us on Twitter">
         <img src="twitter.png" alt="Twitter" class="social-icon" />
       </a>
     </div>
     <div id="status"></div>
   </div>
   <div class="donation-text">
-    Help fund the project by donating Solana/USDC to solmemetics.sol
+    Help fund the project by donating Solana/USDC to <span id="donation-address" class="copyable">solmemetics.sol</span>
   </div>
 
   <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
@@ -173,6 +202,8 @@
     const balanceDiv = document.getElementById("balance");
     const homeBtn = document.getElementById("home");
     const whitepaperBtn = document.getElementById("whitepaper");
+    const donationAddress = document.getElementById("donation-address");
+    const taglineDiv = document.getElementById("tagline");
 
     // Navigation button functionality
     homeBtn.addEventListener("click", () => {
@@ -182,6 +213,38 @@
     whitepaperBtn.addEventListener("click", () => {
       window.location.href = "whitepaper.html";
     });
+
+    // Copy-to-clipboard for donation address
+    donationAddress.addEventListener("click", () => {
+      navigator.clipboard.writeText("solmemetics.sol").then(() => {
+        const originalText = donationAddress.textContent;
+        donationAddress.textContent = "Copied!";
+        setTimeout(() => {
+          donationAddress.textContent = originalText;
+        }, 2000);
+      }).catch(err => {
+        console.error("Copy failed:", err);
+        donationAddress.textContent = "Copy failed!";
+        setTimeout(() => {
+          donationAddress.textContent = "solmemetics.sol";
+        }, 2000);
+      });
+    });
+
+    // Rotating tagline
+    const taglines = [
+      "Empowering the future of memes on Solana",
+      "Join the Solmemetics revolution!",
+      "Your gateway to meme-driven crypto"
+    ];
+    let taglineIndex = 0;
+
+    function updateTagline() {
+      taglineDiv.textContent = taglines[taglineIndex];
+      taglineIndex = (taglineIndex + 1) % taglines.length;
+    }
+    updateTagline();
+    setInterval(updateTagline, 5000); // Change every 5 seconds
 
     async function checkPhantomAndConnect() {
       if (!window.solana || !window.solana.isPhantom) {
