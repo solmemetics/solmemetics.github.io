@@ -191,18 +191,21 @@
     <div class="donation-text">
       Help fund the project by donating Solana/USDC to <span id="donation-address" class="copyable">solmemetics.sol</span>
     </div>
-    <div class="version">v0.051</div>
+    <div class="version">v0.052</div>
   </div>
 
   <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
   <script src="spl-token.umd.min.js"></script>
   <script>
-    // Fallback for spl-token
+    // Load spl-token and set fallback
     window.splToken = window.splToken || {};
-    window.splToken.getAssociatedTokenAddress = window.splToken.getAssociatedTokenAddress || function() { throw new Error("spl-token not loaded"); };
-    window.splToken.createAssociatedTokenAccountInstruction = window.splToken.createAssociatedTokenAccountInstruction || function() { throw new Error("spl-token not loaded"); };
-    window.splToken.createTransferInstruction = window.splToken.createTransferInstruction || function() { throw new Error("spl-token not loaded"); };
+    if (typeof window.splToken.getAssociatedTokenAddress !== 'function') {
+      document.getElementById("status").textContent = "Error: spl-token library failed to load. Please contact support.";
+      console.error("spl-token not loaded, expected getAssociatedTokenAddress function missing");
+      throw new Error("spl-token initialization failed");
+    }
+    const { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createTransferInstruction } = splToken;
 
     // Check if libraries loaded
     if (!window.solanaWeb3 || !window.splToken.getAssociatedTokenAddress || !window.CryptoJS) {
@@ -212,7 +215,6 @@
     }
 
     const { PublicKey, Connection } = solanaWeb3;
-    const { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createTransferInstruction } = splToken;
     const TOKEN_MINT = new PublicKey("BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups");
     const TOTAL_SUPPLY = 100000000;
     const ONE_PERCENT = TOTAL_SUPPLY * 0.01;
