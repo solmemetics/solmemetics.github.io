@@ -89,8 +89,9 @@
       top: 20px;
       left: 20px;
       display: flex;
-      align-items: center;
-      gap: 20px; /* Increased gap for better spacing with text buttons */
+      flex-direction: column; /* Stack buttons vertically */
+      align-items: flex-start; /* Align buttons to the left */
+      gap: 10px; /* Reduced gap for vertical spacing */
     }
 
     #balance {
@@ -212,7 +213,7 @@
           if (mintError.message.includes("403")) {
             statusDiv.textContent = "Error: RPC access forbidden (403). Please try again or use a different RPC.";
           } else if (mintError.message.includes("rate limit")) {
-            statusDiv.textContent = "Error: Solana RPC rate limit exceeded. Try again later.";
+            statusDisv.textContent = "Error: Solana RPC rate limit exceeded. Try again later.";
           } else if (mintError.message.includes("network")) {
             statusDiv.textContent = "Error: Network issue with Solana RPC.";
           } else {
