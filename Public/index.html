@@ -6,30 +6,30 @@
   <title>Solmemetics</title>
   <style>
     html {
-      scroll-behavior: smooth; /* Smooth scrolling for in-page links */
+      scroll-behavior: smooth;
     }
 
     body {
-      background: linear-gradient(180deg, #000000, #1a1a1a); /* Subtle gradient background */
+      background: linear-gradient(180deg, #000000, #1a1a1a);
       color: white;
       font-family: Arial, sans-serif;
       text-align: center;
       position: relative;
-      min-height: 100vh; /* Ensure body takes full viewport height */
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
-      justify-content: center; /* Center content vertically */
-      align-items: center; /* Center content horizontally */
+      justify-content: center;
+      align-items: center;
       margin: 0;
-      padding: 20px; /* Reduced padding to avoid excessive spacing */
+      padding: 20px;
     }
 
     .content {
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin-top: -100px; /* Adjust to shift content slightly higher for balance */
-      animation: fadeIn 1s ease-in; /* Fade-in animation for content */
+      margin-top: -100px;
+      animation: fadeIn 1s ease-in;
     }
 
     @keyframes fadeIn {
@@ -43,12 +43,6 @@
       margin-bottom: 20px;
     }
 
-    h1 {
-      font-size: 24px;
-      margin-bottom: 40px;
-    }
-
-    /* Style for the Connect button */
     .connect-button {
       padding: 12px 24px;
       font-size: 16px;
@@ -64,7 +58,6 @@
       background-color: #e0e0e0;
     }
 
-    /* Style for Home and Whitepaper buttons */
     .nav-button {
       font-size: 16px;
       color: white;
@@ -76,7 +69,7 @@
     }
 
     .nav-button:hover {
-      color: #cccccc; /* Subtle greyish-white on hover */
+      color: #cccccc;
     }
 
     #status {
@@ -99,39 +92,37 @@
       top: 20px;
       left: 20px;
       display: flex;
-      flex-direction: column; /* Stack buttons vertically */
-      align-items: flex-start; /* Align buttons to the left */
-      gap: 10px; /* Reduced gap for vertical spacing */
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
     }
 
     #balance {
       margin-right: 10px;
     }
 
-    /* Style for social media icons */
     .social-links {
       display: flex;
-      gap: 20px; /* Space between icons */
-      margin-bottom: 20px; /* Space between icons and status div */
+      gap: 20px;
+      margin-bottom: 20px;
     }
 
     .social-icon {
-      width: 48px; /* Increased base size for all icons */
+      width: 48px;
       height: 48px;
-      transition: transform 0.3s ease, opacity 0.3s ease; /* Smooth hover animation */
+      transition: transform 0.3s ease, opacity 0.3s ease;
     }
 
     .social-icon.jupiter-icon {
-      width: 57.6px; /* 20% larger than 48px */
+      width: 57.6px;
       height: 57.6px;
     }
 
     .social-icon:hover {
       opacity: 0.8;
-      transform: scale(1.1); /* Scale up on hover */
+      transform: scale(1.1);
     }
 
-    /* Style for donation text */
     .donation-text {
       position: fixed;
       bottom: 20px;
@@ -151,12 +142,56 @@
       color: #e0e0e0;
     }
 
-    /* Style for tagline */
     .tagline {
       font-size: 18px;
       color: #ccc;
       margin-bottom: 20px;
-      min-height: 24px; /* Prevent layout shift */
+      min-height: 24px;
+    }
+
+    .feedback-container {
+      margin-top: 20px;
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .feedback-input, .feedback-textarea {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      margin-bottom: 10px;
+      background: #2a2a2a;
+      color: white;
+    }
+
+    .feedback-textarea {
+      height: 100px;
+      resize: vertical;
+    }
+
+    .feedback-button {
+      padding: 10px 20px;
+      font-size: 16px;
+      background: white;
+      color: black;
+      border: none;
+      border-radius: 9999px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    .feedback-button:hover {
+      background-color: #e0e0e0;
+    }
+
+    .feedback-button:disabled {
+      background-color: #666;
+      cursor: not-allowed;
     }
   </style>
 </head>
@@ -183,6 +218,11 @@
         <img src="twitter.png" alt="Twitter" class="social-icon" />
       </a>
     </div>
+    <div class="feedback-container">
+      <input id="username-input" class="feedback-input" placeholder="Username (optional)" disabled />
+      <textarea id="feedback-input" class="feedback-textarea" placeholder="Enter your feedback (requires 1000 SMM tokens)" disabled></textarea>
+      <button id="feedback-submit" class="feedback-button" disabled>Submit Feedback</button>
+    </div>
     <div id="status"></div>
   </div>
   <div class="donation-text">
@@ -190,12 +230,17 @@
   </div>
 
   <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+  <script src="https://unpkg.com/@solana/spl-token@0.4.8/lib/index.cjs.min.js"></script>
 
   <script>
-    // SMM token mint address
+    // SMM token mint address and constants
     const TOKEN_MINT = new solanaWeb3.PublicKey("BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups");
     const TOTAL_SUPPLY = 100000000; // 100 million tokens
     const ONE_PERCENT = TOTAL_SUPPLY * 0.01; // 1% of total supply
+    const FEEDBACK_FEE = 1000; // 1000 SMM tokens
+    const RECIPIENT_ADDRESS = new solanaWeb3.PublicKey("Cj64jfCQ2dR5Utf62nMnmEq8fjerAk4u1mZY1Hv53QZA");
+    const ENCRYPTION_KEY = "solmemetics-secret-2025"; // Replace with a secure key
 
     const connectBtn = document.getElementById("connect");
     const statusDiv = document.getElementById("status");
@@ -204,10 +249,13 @@
     const whitepaperBtn = document.getElementById("whitepaper");
     const donationAddress = document.getElementById("donation-address");
     const taglineDiv = document.getElementById("tagline");
+    const usernameInput = document.getElementById("username-input");
+    const feedbackInput = document.getElementById("feedback-input");
+    const feedbackSubmit = document.getElementById("feedback-submit");
 
     // Navigation button functionality
     homeBtn.addEventListener("click", () => {
-      window.location.href = "index.html"; // Assuming this is the home page
+      window.location.href = "index.html";
     });
 
     whitepaperBtn.addEventListener("click", () => {
@@ -247,30 +295,132 @@
       let newIndex;
       do {
         newIndex = Math.floor(Math.random() * taglines.length);
-      } while (newIndex === excludeIndex && taglines.length > 1); // Avoid same tagline if possible
+      } while (newIndex === excludeIndex && taglines.length > 1);
       return { index: newIndex, tagline: taglines[newIndex] };
     }
 
     function updateTagline() {
-      // Get the last used tagline index from localStorage
       const lastIndex = localStorage.getItem("lastTaglineIndex");
       const { index, tagline } = getRandomTagline(lastIndex ? parseInt(lastIndex) : null);
-      
-      // Update the tagline and store the new index
       taglineDiv.textContent = tagline;
       localStorage.setItem("lastTaglineIndex", index);
     }
 
-    // Set initial tagline on page load
     updateTagline();
-
-    // Rotate tagline every 50 seconds
     setInterval(updateTagline, 50000);
+
+    // Feedback encryption
+    function encryptFeedback(data) {
+      try {
+        return CryptoJS.AES.encrypt(JSON.stringify(data), ENCRYPTION_KEY).toString();
+      } catch (err) {
+        console.error("Encryption failed:", err);
+        return null;
+      }
+    }
+
+    // Feedback submission
+    async function submitFeedback(publicKey, username, feedback) {
+      const encryptedData = encryptFeedback({ username, feedback });
+      if (!encryptedData) {
+        statusDiv.textContent = "Error: Failed to encrypt feedback.";
+        return;
+      }
+
+      try {
+        const response = await fetch("/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            publicKey: publicKey.toBase58(),
+            encryptedData,
+            timestamp: new Date().toISOString()
+          })
+        });
+        if (!response.ok) {
+          throw new Error("Failed to submit feedback to server.");
+        }
+        statusDiv.textContent = "Feedback submitted successfully!";
+        usernameInput.value = "";
+        feedbackInput.value = "";
+      } catch (err) {
+        console.error("Feedback submission error:", err);
+        statusDiv.textContent = "Error: Failed to submit feedback.";
+      }
+    }
+
+    // Token transfer for feedback fee
+    async function transferFeedbackFee(connection, provider, fromPubkey) {
+      try {
+        const tokenProgramId = new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+        const fromTokenAccount = (await connection.getParsedTokenAccountsByOwner(fromPubkey, { mint: TOKEN_MINT })).value.find(
+          acc => acc.account.data.parsed.info.mint === TOKEN_MINT.toBase58()
+        );
+        if (!fromTokenAccount) {
+          statusDiv.textContent = "Error: No SMM token account found.";
+          return false;
+        }
+
+        const toTokenAccount = await splToken.getAssociatedTokenAddress(
+          TOKEN_MINT,
+          RECIPIENT_ADDRESS,
+          false,
+          tokenProgramId
+        );
+
+        const transaction = new solanaWeb3.Transaction();
+        const accountInfo = await connection.getAccountInfo(toTokenAccount);
+        if (!accountInfo) {
+          transaction.add(
+            splToken.createAssociatedTokenAccountInstruction(
+              fromPubkey,
+              toTokenAccount,
+              RECIPIENT_ADDRESS,
+              TOKEN_MINT,
+              tokenProgramId
+            )
+          );
+        }
+
+        const balance = fromTokenAccount.account.data.parsed.info.tokenAmount.uiAmount;
+        if (balance < FEEDBACK_FEE) {
+          statusDiv.textContent = `Error: Insufficient balance. Need ${FEEDBACK_FEE} SMM, but only ${balance} SMM available.`;
+          return false;
+        }
+
+        transaction.add(
+          splToken.createTransferInstruction(
+            fromTokenAccount.pubkey,
+            toTokenAccount,
+            fromPubkey,
+            FEEDBACK_FEE * 10 ** 9, // Assuming 9 decimals
+            []
+          )
+        );
+
+        const { blockhash } = await connection.getLatestBlockhash();
+        transaction.recentBlockhash = blockhash;
+        transaction.feePayer = fromPubkey;
+
+        const signedTransaction = await provider.signTransaction(transaction);
+        const txId = await connection.sendRawTransaction(signedTransaction.serialize());
+        await connection.confirmTransaction({ signature: txId, blockhash, lastValidBlockHeight: (await connection.getLatestBlockhash()).lastValidBlockHeight });
+        statusDiv.textContent = "Token transfer successful!";
+        return true;
+      } catch (err) {
+        console.error("Token transfer error:", err);
+        statusDiv.textContent = "Error: Failed to transfer SMM tokens.";
+        return false;
+      }
+    }
 
     async function checkPhantomAndConnect() {
       if (!window.solana || !window.solana.isPhantom) {
         statusDiv.textContent = "Phantom Wallet not found. Please install Phantom.";
         window.open("https://phantom.app/", "_blank");
+        usernameInput.disabled = true;
+        feedbackInput.disabled = true;
+        feedbackSubmit.disabled = true;
         return;
       }
 
@@ -279,6 +429,9 @@
         const resp = await provider.connect();
         const publicKey = resp.publicKey;
         statusDiv.textContent = `Connected: ${publicKey.toBase58().slice(0, 6)}...`;
+        usernameInput.disabled = false;
+        feedbackInput.disabled = false;
+        feedbackSubmit.disabled = false;
 
         const connection = new solanaWeb3.Connection(
           "https://silent-fluent-diamond.solana-mainnet.quiknode.pro/bdf6a6133f8736f5bf9097f4628841fe18b60bcc",
@@ -338,7 +491,6 @@
           }
         }
 
-        // Display balance with up to 9 decimals, trimming trailing zeros
         const balanceString = tokenBalance.toString();
         const [integerPart, decimalPart] = balanceString.split('.');
         let displayBalance = integerPart;
@@ -386,27 +538,46 @@
           return "Error determining SMM balance.";
         }
 
-        // Change button to disconnect and enable disconnect functionality
+        // Enable feedback submission
+        feedbackSubmit.onclick = async () => {
+          const feedback = feedbackInput.value.trim();
+          const username = usernameInput.value.trim();
+          if (!feedback) {
+            statusDiv.textContent = "Error: Feedback cannot be empty.";
+            return;
+          }
+
+          statusDiv.textContent = "Processing token transfer...";
+          const transferSuccess = await transferFeedbackFee(connection, provider, publicKey);
+          if (transferSuccess) {
+            statusDiv.textContent = "Submitting feedback...";
+            await submitFeedback(publicKey, username || "Anonymous", feedback);
+          }
+        };
+
+        // Change button to disconnect
         connectBtn.textContent = "Disconnect";
-        connectBtn.removeEventListener("click", checkPhantomAndConnect); // Remove connect handler
+        connectBtn.removeEventListener("click", checkPhantomAndConnect);
         const disconnectHandler = async () => {
           try {
             await provider.disconnect();
             connectBtn.textContent = "Connect";
             balanceDiv.textContent = "Balance: 0 SMM";
             statusDiv.textContent = "Disconnected from Phantom Wallet.";
-            connectBtn.removeEventListener("click", disconnectHandler); // Remove disconnect handler
-            connectBtn.addEventListener("click", checkPhantomAndConnect); // Re-attach connect handler
+            usernameInput.disabled = true;
+            feedbackInput.disabled = true;
+            feedbackSubmit.disabled = true;
+            connectBtn.removeEventListener("click", disconnectHandler);
+            connectBtn.addEventListener("click", checkPhantomAndConnect);
           } catch (err) {
             console.error("Disconnect error:", err);
             statusDiv.textContent = "Error disconnecting from Phantom Wallet.";
-            // Ensure button is reset even on error
             connectBtn.textContent = "Connect";
             connectBtn.removeEventListener("click", disconnectHandler);
             connectBtn.addEventListener("click", checkPhantomAndConnect);
           }
         };
-        connectBtn.addEventListener("click", disconnectHandler); // Attach disconnect handler
+        connectBtn.addEventListener("click", disconnectHandler);
       } catch (err) {
         console.error("Error during connection or query:", err);
         if (err.code === 4001) {
@@ -420,6 +591,9 @@
         } else {
           statusDiv.textContent = "Error: Failed to fetch SMM token balance.";
         }
+        usernameInput.disabled = true;
+        feedbackInput.disabled = true;
+        feedbackSubmit.disabled = true;
       }
     }
 
@@ -434,7 +608,14 @@
           }
         } catch (err) {
           console.error("Auto-connect error:", err);
+          usernameInput.disabled = true;
+          feedbackInput.disabled = true;
+          feedbackSubmit.disabled = true;
         }
+      } else {
+        usernameInput.disabled = true;
+        feedbackInput.disabled = true;
+        feedbackSubmit.disabled = true;
       }
     });
   </script>
