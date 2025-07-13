@@ -189,11 +189,17 @@
   <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
   <script src="https://unpkg.com/@solana/spl-token@0.4.8/lib/index.umd.min.js"></script>
-
   <script>
+    // Fallback for spl-token if CDN fails
+    window.splToken = window.splToken || {};
+    window.splToken.getAssociatedTokenAddress = window.splToken.getAssociatedTokenAddress || function() { throw new Error("spl-token not loaded"); };
+    window.splToken.createAssociatedTokenAccountInstruction = window.splToken.createAssociatedTokenAccountInstruction || function() { throw new Error("spl-token not loaded"); };
+    window.splToken.createTransferInstruction = window.splToken.createTransferInstruction || function() { throw new Error("spl-token not loaded"); };
+
     // Check if libraries loaded
-    if (!window.solanaWeb3 || !window.splToken || !window.CryptoJS) {
-      document.getElementById("status").textContent = "Error: Failed to load required libraries (web3.js, spl-token, or CryptoJS).";
+    if (!window.solanaWeb3 || !window.splToken.getAssociatedTokenAddress || !window.CryptoJS) {
+      document.getElementById("status").textContent = "Error: Failed to load required libraries (web3.js, spl-token, or CryptoJS). Check console for details.";
+      console.error("Library loading issue: solanaWeb3:", !!window.solanaWeb3, "splToken:", !!window.splToken.getAssociatedTokenAddress, "CryptoJS:", !!window.CryptoJS);
       throw new Error("Library loading failed");
     }
 
@@ -516,8 +522,8 @@
         viewFeedbackBtn.style.display = "none";
         return;
       }
-      if (!window.solanaWeb3 || !window.splToken || !window.CryptoJS) {
-        statusDiv.textContent = "Error: Failed to load required libraries (web3.js, spl-token, or CryptoJS).";
+      if (!window.solanaWeb3 || !window.splToken.getAssociatedTokenAddress || !window.CryptoJS) {
+        statusDiv.textContent = "Error: Failed to load required libraries (web3.js, spl-token, or CryptoJS). Check console for details.";
         usernameInput.disabled = true;
         feedbackInput.disabled = true;
         feedbackSubmit.disabled = true;

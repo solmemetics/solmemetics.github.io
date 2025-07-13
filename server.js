@@ -13,12 +13,14 @@ app.use(express.static(path.join(__dirname, "public")));
 // Serve index.html for all unmatched routes
 app.get("*", (req, res) => {
   const filePath = path.join(__dirname, "public", "index.html");
-  res.sendFile(filePath, err => {
-    if (err) {
-      console.error("Error serving index.html:", err);
-      res.status(500).send("Server error: Unable to serve page");
-    }
-  });
+  fs.access(filePath)
+    .then(() => {
+      res.sendFile(filePath);
+    })
+    .catch(err => {
+      console.error("Error accessing index.html:", err);
+      res.status(500).send("Server error: Unable to serve page. Check if public/index.html exists.");
+    });
 });
 
 // Feedback submission endpoint
