@@ -1,13 +1,19 @@
 const express = require("express");
 const cors = require("cors");
 const fs = require("fs").promises;
+const path = require("path");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 // Serve static files from the public directory
-app.use(express.static("public"));
+app.use(express.static(path.join(__dirname, "public")));
+
+// Explicitly serve index.html for the root URL
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
 
 // Feedback submission endpoint
 app.post("/feedback", async (req, res) => {
@@ -28,8 +34,12 @@ app.get("/get-feedback", async (req, res) => {
     const feedback = data.split("\n").filter(line => line).map(line => JSON.parse(line));
     res.status(200).json(feedback);
   } catch (err) {
-    console.error("Error fetching feedback:", err);
-    res.status(500).json({ error: "Failed to fetch feedback" });
+    if (err.code === "ENOENT") {
+      res.status(200).json([]); // Return empty array if file doesn't exist
+    } else {
+      console.error("Error fetching feedback:", err);
+      res.status(500).json({ error: "Failed to fetch feedback" });
+    }
   }
 });
 
