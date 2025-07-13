@@ -12,7 +12,13 @@ app.use(express.static(path.join(__dirname, "public")));
 
 // Serve index.html for all unmatched routes
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  const filePath = path.join(__dirname, "public", "index.html");
+  res.sendFile(filePath, err => {
+    if (err) {
+      console.error("Error serving index.html:", err);
+      res.status(500).send("Server error: Unable to serve page");
+    }
+  });
 });
 
 // Feedback submission endpoint
@@ -35,7 +41,7 @@ app.get("/get-feedback", async (req, res) => {
     res.status(200).json(feedback);
   } catch (err) {
     if (err.code === "ENOENT") {
-      res.status(200).json([]); // Return empty array if file doesn't exist
+      res.status(200).json([]);
     } else {
       console.error("Error fetching feedback:", err);
       res.status(500).json({ error: "Failed to fetch feedback" });

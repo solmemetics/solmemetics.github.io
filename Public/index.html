@@ -191,6 +191,12 @@
   <script src="https://unpkg.com/@solana/spl-token@0.4.8/lib/index.umd.min.js"></script>
 
   <script>
+    // Check if libraries loaded
+    if (!window.solanaWeb3 || !window.splToken || !window.CryptoJS) {
+      document.getElementById("status").textContent = "Error: Failed to load required libraries (web3.js, spl-token, or CryptoJS).";
+      throw new Error("Library loading failed");
+    }
+
     const { PublicKey, Connection } = solanaWeb3;
     const { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createTransferInstruction } = splToken;
     const TOKEN_MINT = new PublicKey("BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups");
@@ -510,16 +516,20 @@
         viewFeedbackBtn.style.display = "none";
         return;
       }
+      if (!window.solanaWeb3 || !window.splToken || !window.CryptoJS) {
+        statusDiv.textContent = "Error: Failed to load required libraries (web3.js, spl-token, or CryptoJS).";
+        usernameInput.disabled = true;
+        feedbackInput.disabled = true;
+        feedbackSubmit.disabled = true;
+        viewFeedbackBtn.style.display = "none";
+        return;
+      }
       try {
         const provider = window.solana;
         if (provider.isConnected) await checkPhantomAndConnect();
       } catch (err) {
         console.error("Auto-connect error:", err);
         statusDiv.textContent = `Error: Auto-connect failed - ${err.message}`;
-        usernameInput.disabled = true;
-        feedbackInput.disabled = true;
-        feedbackSubmit.disabled = true;
-        viewFeedbackBtn.style.display = "none";
       }
     });
   </script>
