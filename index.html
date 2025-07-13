@@ -235,7 +235,14 @@
     const taglines = [
       "Empowering the future of memes on Solana",
       "Join the Solmemetics revolution!",
-      "Your gateway to meme-driven crypto"
+      "Your gateway to meme-driven crypto",
+      "Empowering the future of memes on Solana",
+      "Join the Solmemetics revolution!",
+      "What are you talking about",
+      "I smell good",
+      "Probably nothing",
+      "Damn, you're looking good today",
+      "Did you buy yet?"
     ];
     let taglineIndex = 0;
 
@@ -244,7 +251,7 @@
       taglineIndex = (taglineIndex + 1) % taglines.length;
     }
     updateTagline();
-    setInterval(updateTagline, 5000); // Change every 5 seconds
+    setInterval(updateTagline, 50000); // Change every 50 seconds
 
     async function checkPhantomAndConnect() {
       if (!window.solana || !window.solana.isPhantom) {
