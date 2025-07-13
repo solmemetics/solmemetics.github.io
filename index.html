@@ -92,7 +92,7 @@
     }
     .social-icon.jupiter-icon { width: 57.6px; height: 57.6px; }
     .social-icon:hover { opacity: 0.8; transform: scale(1.1); }
-    .donation-text {
+    .donation-container {
       position: fixed;
       bottom: 20px;
       width: 100%;
@@ -103,6 +103,11 @@
     }
     .copyable { cursor: pointer; text-decoration: underline; }
     .copyable:hover { color: #e0e0e0; }
+    .version {
+      font-size: 14px;
+      color: #ccc;
+      margin-top: 5px;
+    }
     .tagline {
       font-size: 18px;
       color: #ccc;
@@ -148,14 +153,6 @@
       color: #ccc;
     }
     .feedback-item { border-bottom: 1px solid #444; padding: 10px 0; }
-    .version {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      font-size: 14px;
-      color: #ccc;
-      font-family: Arial, sans-serif;
-    }
   </style>
 </head>
 <body>
@@ -190,10 +187,12 @@
     <div id="feedback-list"></div>
     <div id="status"></div>
   </div>
-  <div class="donation-text">
-    Help fund the project by donating Solana/USDC to <span id="donation-address" class="copyable">solmemetics.sol</span>
+  <div class="donation-container">
+    <div class="donation-text">
+      Help fund the project by donating Solana/USDC to <span id="donation-address" class="copyable">solmemetics.sol</span>
+    </div>
+    <div class="version">v0.050</div>
   </div>
-  <div class="version">v0.049</div>
 
   <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
