@@ -565,56 +565,74 @@
     let connected = false;
 
     connectBtn.addEventListener("click", async () => {
-      if (!connected) {
-        await checkPhantomAndConnect();
-        if (window.solana?.isConnected) {
-          connectBtn.textContent = "Disconnect";
-          connected = true;
-        }
-      } else {
-        try {
-          await window.solana.disconnect();
-          connectBtn.textContent = "Connect";
-          balanceDiv.textContent = "Balance: 0 SMM";
-          statusDiv.textContent = "Disconnected from Phantom Wallet.";
-          usernameInput.disabled = true;
-          feedbackInput.disabled = true;
-          feedbackSubmit.disabled = true;
-          viewFeedbackBtn.style.display = "none";
-          feedbackList.innerHTML = "";
-          connected = false;
-        } catch (err) {
-          console.error("Disconnect error:", err);
-          statusDiv.textContent = `Error: Failed to disconnect - ${err.message}`;
-        }
-      }
-    });
+  if (!window.solana || !window.solana.isPhantom) {
+    statusDiv.textContent = "Phantom Wallet not found. Please install Phantom.";
+    window.open("https://phantom.app/", "_blank");
+    return;
+  }
+
+  const provider = window.solana;
+
+  try {
+    if (!connected) {
+      const response = await provider.connect(); // Will trigger Phantom popup
+      console.log("Connected wallet:", response.publicKey.toString());
+
+      const publicKey = provider.publicKey;
+      connectBtn.textContent = "Disconnect";
+      statusDiv.textContent = `Connected: ${publicKey.toBase58().slice(0, 6)}...`;
+      connected = true;
+
+      // Now load rest of logic (balance, feedback, etc.)
+      await checkPhantomAndConnect();
+
+    } else {
+      await provider.disconnect();
+      connectBtn.textContent = "Connect";
+      balanceDiv.textContent = "Balance: 0 SMM";
+      statusDiv.textContent = "Disconnected from Phantom Wallet.";
+      usernameInput.disabled = true;
+      feedbackInput.disabled = true;
+      feedbackSubmit.disabled = true;
+      viewFeedbackBtn.style.display = "none";
+      feedbackList.innerHTML = "";
+      connected = false;
+    }
+  } catch (err) {
+    console.error("Wallet connection error:", err);
+    statusDiv.textContent = `Error: ${err.message}`;
+  }
+});
+
 
     window.addEventListener("load", async () => {
-      if (!window.solana || !window.solana.isPhantom) {
-        statusDiv.textContent = "Phantom Wallet not found. Please install Phantom.";
-        usernameInput.disabled = true;
-        feedbackInput.disabled = true;
-        feedbackSubmit.disabled = true;
-        viewFeedbackBtn.style.display = "none";
-        return;
-      }
-      if (!window.solanaWeb3 || !window.splToken || !window.CryptoJS) {
-        statusDiv.textContent = "Error: Failed to load required libraries (web3.js, spl-token, or CryptoJS). Check console for details.";
-        usernameInput.disabled = true;
-        feedbackInput.disabled = true;
-        feedbackSubmit.disabled = true;
-        viewFeedbackBtn.style.display = "none";
-        return;
-      }
-      try {
-        const provider = window.solana;
-        if (provider.isConnected) await checkPhantomAndConnect();
-      } catch (err) {
-        console.error("Auto-connect error:", err);
-        statusDiv.textContent = `Error: Auto-connect failed - ${err.message}`;
-      }
-    });
+  if (window.solana && window.solana.isPhantom) {
+    connectBtn.disabled = false;
+    connectBtn.textContent = "Connect";
+  } else {
+    connectBtn.disabled = true;
+    statusDiv.textContent = "Phantom Wallet not detected.";
+    return;
+  }
+
+  if (!window.solanaWeb3 || !window.splToken || !window.CryptoJS) {
+    statusDiv.textContent = "Error: Failed to load required libraries (web3.js, spl-token, or CryptoJS). Check console for details.";
+    usernameInput.disabled = true;
+    feedbackInput.disabled = true;
+    feedbackSubmit.disabled = true;
+    viewFeedbackBtn.style.display = "none";
+    return;
+  }
+
+  try {
+    const provider = window.solana;
+    if (provider.isConnected) await checkPhantomAndConnect();
+  } catch (err) {
+    console.error("Auto-connect error:", err);
+    statusDiv.textContent = `Error: Auto-connect failed - ${err.message}`;
+  }
+});
+
   </script>
 </body>
 </html>
