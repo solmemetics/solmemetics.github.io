@@ -293,29 +293,24 @@
       const encryptedData = encryptFeedback({ username, feedback });
       if (!encryptedData) return;
       try {
-  const response = await fetch("https://solmemetics-backend.onrender.com/feedback", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      publicKey: publicKey.toBase58(),
-      encryptedData,
-      timestamp: new Date().toISOString()
-    })
-  });
-  if (!response.ok) throw new Error(`HTTP ${response.status}: Failed to submit feedback`);
-  statusDiv.textContent = "Feedback submitted successfully!";
-  usernameInput.value = "";
-  feedbackInput.value = "";
-} catch (err) {
-  console.error("Feedback submission error:", err);
-  statusDiv.textContent = `Error: Failed to submit feedback - ${err.message}`;
-}
-
+        const response = await fetch("/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ publicKey: publicKey.toBase58(), encryptedData, timestamp: new Date().toISOString() })
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}: Failed to submit feedback`);
+        statusDiv.textContent = "Feedback submitted successfully!";
+        usernameInput.value = "";
+        feedbackInput.value = "";
+      } catch (err) {
+        console.error("Feedback submission error:", err);
+        statusDiv.textContent = `Error: Failed to submit feedback - ${err.message}`;
+      }
     }
 
     async function fetchFeedback() {
       try {
-        const response = await fetch("https://solmemetics-backend.onrender.com/get-feedback");
+        const response = await fetch("/get-feedback");
         if (!response.ok) throw new Error(`HTTP ${response.status}: Failed to fetch feedback`);
         const feedbackData = await response.json();
         feedbackList.innerHTML = "";
