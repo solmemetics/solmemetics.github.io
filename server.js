@@ -1,55 +1,20 @@
-const express = require("express");
-const cors = require("cors");
-const fs = require("fs").promises;
-const path = require("path");
-
+const express = require('express');
 const app = express();
-app.use(cors());
+const PORT = process.env.PORT || 3000;
+
 app.use(express.json());
 
-// Serve static files from the public directory
-app.use(express.static(path.join(__dirname, "public")));
-
-// Serve index.html for all unmatched routes
-app.get("*", (req, res) => {
-  const filePath = path.join(__dirname, "public", "index.html");
-  fs.access(filePath)
-    .then(() => {
-      res.sendFile(filePath);
-    })
-    .catch(err => {
-      console.error("Error accessing index.html:", err);
-      res.status(500).send("Server error: Unable to serve page. Check if public/index.html exists.");
-    });
+app.get('/', (req, res) => {
+  res.send('Solmemetics API is running');
 });
 
-// Feedback submission endpoint
-app.post("/feedback", async (req, res) => {
-  try {
-    const { publicKey, encryptedData, timestamp } = req.body;
-    await fs.appendFile("feedback.json", JSON.stringify({ publicKey, encryptedData, timestamp }) + "\n");
-    res.status(200).json({ message: "Feedback received" });
-  } catch (err) {
-    console.error("Error storing feedback:", err);
-    res.status(500).json({ error: "Failed to store feedback" });
-  }
+// Example endpoint
+app.post('/feedback', (req, res) => {
+  const { publicKey, encryptedData } = req.body;
+  console.log("Received:", publicKey, encryptedData);
+  res.json({ success: true });
 });
 
-// Feedback retrieval endpoint
-app.get("/get-feedback", async (req, res) => {
-  try {
-    const data = await fs.readFile("feedback.json", "utf8");
-    const feedback = data.split("\n").filter(line => line).map(line => JSON.parse(line));
-    res.status(200).json(feedback);
-  } catch (err) {
-    if (err.code === "ENOENT") {
-      res.status(200).json([]);
-    } else {
-      console.error("Error fetching feedback:", err);
-      res.status(500).json({ error: "Failed to fetch feedback" });
-    }
-  }
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
