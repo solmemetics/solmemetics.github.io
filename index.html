@@ -191,7 +191,7 @@
     <div class="donation-text">
       Help fund the project by donating Solana/USDC to <span id="donation-address" class="copyable">solmemetics.sol</span>
     </div>
-    <div class="version">v0.0509c</div>
+    <div class="version">v0.0509d</div>
   </div>
 
   <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
@@ -404,6 +404,7 @@
       try {
         const provider = window.solana;
         await provider.connect({ onlyIfTrusted: false });
+        connected = true;
         const publicKey = provider.publicKey;
         statusDiv.textContent = `Connected: ${publicKey.toBase58().slice(0, 6)}...`;
         usernameInput.disabled = false;
@@ -503,30 +504,7 @@
           statusDiv.textContent = "Fetching feedback...";
           await fetchFeedback();
         };
-        connectBtn.textContent = "Disconnect";
-        connectBtn.removeEventListener("click", checkPhantomAndConnect);
-        const disconnectHandler = async () => {
-          try {
-            await provider.disconnect();
-            connectBtn.textContent = "Connect";
-            balanceDiv.textContent = "Balance: 0 SMM";
-            statusDiv.textContent = "Disconnected from Phantom Wallet.";
-            usernameInput.disabled = true;
-            feedbackInput.disabled = true;
-            feedbackSubmit.disabled = true;
-            viewFeedbackBtn.style.display = "none";
-            feedbackList.innerHTML = "";
-            connectBtn.removeEventListener("click", disconnectHandler);
-            connectBtn.addEventListener("click", checkPhantomAndConnect);
-          } catch (err) {
-            console.error("Disconnect error:", err);
-            statusDiv.textContent = `Error: Failed to disconnect - ${err.message}`;
-            connectBtn.textContent = "Connect";
-            connectBtn.removeEventListener("click", disconnectHandler);
-            connectBtn.addEventListener("click", checkPhantomAndConnect);
-          }
-        };
-        connectBtn.addEventListener("click", disconnectHandler);
+        
       } catch (err) {
         console.error("Connection error:", err);
         statusDiv.textContent = `Error: Failed to connect - ${err.message}`;
@@ -537,7 +515,33 @@
       }
     }
 
-    connectBtn.addEventListener("click", checkPhantomAndConnect);
+    let connected = false;
+
+connectBtn.addEventListener("click", async () => {
+  if (!connected) {
+    await checkPhantomAndConnect();
+    if (window.solana?.isConnected) {
+      connectBtn.textContent = "Disconnect";
+      connected = true;
+    }
+  } else {
+    try {
+      await window.solana.disconnect();
+      connectBtn.textContent = "Connect";
+      balanceDiv.textContent = "Balance: 0 SMM";
+      statusDiv.textContent = "Disconnected from Phantom Wallet.";
+      usernameInput.disabled = true;
+      feedbackInput.disabled = true;
+      feedbackSubmit.disabled = true;
+      viewFeedbackBtn.style.display = "none";
+      feedbackList.innerHTML = "";
+      connected = false;
+    } catch (err) {
+      console.error("Disconnect error:", err);
+      statusDiv.textContent = `Error: Failed to disconnect - ${err.message}`;
+    }
+  }
+});
 
     window.addEventListener("load", async () => {
       if (!window.solana || !window.solana.isPhantom) {
