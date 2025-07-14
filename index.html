@@ -198,13 +198,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@solana/spl-token@0.3.5/lib/index.iife.min.js"></script>
   <script>
-    // Fallback for spl-token
-    window.splToken = window.splToken || {};
-    window.splToken.getAssociatedTokenAddress = window.splToken.getAssociatedTokenAddress || function() { throw new Error("spl-token not loaded"); };
-    window.splToken.createAssociatedTokenAccountInstruction = window.splToken.createAssociatedTokenAccountInstruction || function() { throw new Error("spl-token not loaded"); };
-    window.splToken.createTransferInstruction = window.splToken.createTransferInstruction || function() { throw new Error("spl-token not loaded"); };
-
-    // Check if libraries loaded
+  console.log("splToken loaded:", typeof splToken.getAssociatedTokenAddress);
+</script>
+  <script>
+        // Check if libraries loaded
     if (!window.solanaWeb3 || !window.splToken.getAssociatedTokenAddress || !window.CryptoJS) {
       document.getElementById("status").textContent = "Error: Failed to load required libraries (web3.js, spl-token, or CryptoJS). Check console for details.";
       console.error("Library loading issue: solanaWeb3:", !!window.solanaWeb3, "splToken:", !!window.splToken.getAssociatedTokenAddress, "CryptoJS:", !!window.CryptoJS);
@@ -212,7 +209,12 @@
     }
 
     const { PublicKey, Connection } = solanaWeb3;
-    const { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createTransferInstruction } = splToken;
+    const {
+  getAssociatedTokenAddress,
+  createAssociatedTokenAccountInstruction,
+  createTransferInstruction,
+  TOKEN_PROGRAM_ID
+} = splToken;
     const TOKEN_MINT = new PublicKey("BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups");
     const TOTAL_SUPPLY = 100000000;
     const ONE_PERCENT = TOTAL_SUPPLY * 0.01;
@@ -341,7 +343,7 @@ async function fetchFeedback() {
 
     async function transferFeedbackFee(connection, provider, fromPubkey) {
       try {
-        const tokenProgramId = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+        const tokenProgramId = TOKEN_PROGRAM_ID;
         const fromTokenAccount = (await connection.getParsedTokenAccountsByOwner(fromPubkey, { mint: TOKEN_MINT })).value.find(
           acc => acc.account.data.parsed.info.mint === TOKEN_MINT.toBase58()
         );
