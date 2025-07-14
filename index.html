@@ -143,207 +143,6 @@
       cursor: pointer;
       transition: background-color 0.3s;
     }
-   . feedback-button:hover { background-color: #e0e0e0; }
-    .feedback-button:disabled { background-color: #666; cursor: not-allowed; }
-    #feedback-list {
-      margin-top: 20px;
-      width: 100%;
-      max-width: 400px;
-      text-align: left;
-      color: #ccc;
-    }
-    .feedback-item { border-bottom: 1px solid #444; padding: 10px 0; }
-  </style>
-  <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-  <script src="https://unpkg.com/@solana/spl-token@0.4.8/lib/index.iife.min.js"></script>
-  <!-- Fallback for spl-token if unpkg fails -->
-  <script>
-    if (!window.splToken) {
-      console.warn("spl-token failed to load from unpkg, trying jsdelivr...");
-      const script = document.createElement("script");
-      script.src = "https://cdn.jsdelivr.net/npm/@solana/spl-token@0.4.8/lib/index.iife.min.js";
-      script.async = true;
-      document.head.appendChild(script);
-    }
-  </script>
-</head>
-<body>
-  <div id="nav-controls">
-    <button id="home" class="nav-button">Homepage</button>
-    <button id="whitepaper" class="nav-button">Whitepaper</button>
-  </div>
-  <div id="controls">
-    <div id="balance">Balance: 0 SMM</div>
-    <button id="connect" class="connect-button">Connect</button>
-  </div>
-  <div class="content">
-    <img src="your-image.png" alt="Coming Soon" />
-    <div class="tagline" id="tagline"></div>
-    <div class="social-links">
-      <a href="https://t.me/solmemeticsTG" target="_blank" title="Join our Telegram">
-        <img src="telegram.png" alt="Telegram" class="social-icon" />
-      </a>
-      <a href="https://jup.ag/tokens/BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups" target="_blank" title="Trade on Jupiter">
-        <img src="jupiter.png" alt="Jupiter" class="social-icon jupiter-icon" />
-      </a>
-      <a href="https://x.com/sol
-
-System: I apologize for the interruption. It seems the response was cut off. Let me provide the complete, corrected HTML file with all fixes applied to address the library errors, navigation buttons, and "Connect" button issues. I'll ensure the code is robust and includes all necessary changes based on your feedback and the context of `v0.050`.
-
-### Final Corrected HTML
-Below is the fully updated HTML file. The changes include:
-- **Library Fix**: Using `unpkg.com` for `@solana/spl-token@0.4.8` with a fallback to `jsdelivr` to prevent loading errors.
-- **Navigation Fix**: Updated paths to `/index.html` and `/whitepaper.html`, with checks to avoid redundant navigation and better error handling.
-- **Connect Button Fix**: Simplified `checkPhantomAndConnect` to match `v0.050` behavior, with robust Phantom Wallet detection and improved logging.
-- **General**: Added detailed console logs, maintained `v0.0509e` version, and kept all other functionality (feedback, taglines, etc.) intact.
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Solmemetics</title>
-  <style>
-    html { scroll-behavior: smooth; }
-    body {
-      background: linear-gradient(180deg, #000000, #1a1a1a);
-      color: white;
-      font-family: Arial, sans-serif;
-      text-align: center;
-      position: relative;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      margin: 0;
-      padding: 20px;
-    }
-    .content {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin-top: -100px;
-      animation: fadeIn 1s ease-in;
-    }
-    @keyframes fadeIn {
-      0% { opacity: 0; transform: translateY(20px); }
-      100% { opacity: 1; transform: translateY(0); }
-    }
-    img {
-      max-width: 300px;
-      height: auto;
-      margin-bottom: 20px;
-    }
-    .connect-button {
-      padding: 12px 24px;
-      font-size: 16px;
-      background: white;
-      color: black;
-      border: none;
-      border-radius: 9999px;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
-    .connect-button:hover { background-color: #e0e0e0; }
-    .nav-button {
-      font-size: 16px;
-      color: white;
-      font-weight: bold;
-      background: none;
-      border: none;
-      cursor: pointer;
-      transition: color 0.3s;
-    }
-    .nav-button:hover { color: #cccccc; }
-    #status {
-      margin-top: 20px;
-      font-size: 16px;
-      color: #ccc;
-    }
-    #controls {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    #nav-controls {
-      position: absolute;
-      top: 20px;
-      left: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 10px;
-    }
-    #balance { margin-right: 10px; }
-    .social-links {
-      display: flex;
-      gap: 20px;
-      margin-bottom: 20px;
-    }
-    .social-icon {
-      width: 48px;
-      height: 48px;
-      transition: transform 0.3s ease, opacity 0.3s ease;
-    }
-    .social-icon.jupiter-icon { width: 57.6px; height: 57.6px; }
-    .social-icon:hover { opacity: 0.8; transform: scale(1.1); }
-    .donation-container {
-      position: fixed;
-      bottom: 20px;
-      width: 100%;
-      text-align: center;
-      font-size: 14px;
-      color: #ccc;
-      font-family: Arial, sans-serif;
-    }
-    .copyable { cursor: pointer; text-decoration: underline; }
-    .copyable:hover { color: #e0e0e0; }
-    .version {
-      font-size: 14px;
-      color: #ccc;
-      margin-top: 5px;
-    }
-    .tagline {
-      font-size: 18px;
-      color: #ccc;
-      margin-bottom: 20px;
-      min-height: 24px;
-    }
-    .feedback-container {
-      margin-top: 20px;
-      width: 100%;
-      max-width: 400px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .feedback-input, .feedback-textarea {
-      width: 100%;
-      padding: 10px;
-      font-size: 16px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      margin-bottom: 10px;
-      background: #2a2a2a;
-      color: white;
-    }
-    .feedback-textarea { height: 100px; resize: vertical; }
-    .feedback-button {
-      padding: 10px 20px;
-      font-size: 16px;
-      background: white;
-      color: black;
-      border: none;
-      border-radius: 9999px;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
     .feedback-button:hover { background-color: #e0e0e0; }
     .feedback-button:disabled { background-color: #666; cursor: not-allowed; }
     #feedback-list {
@@ -357,21 +156,7 @@ Below is the fully updated HTML file. The changes include:
   </style>
   <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-  <script src="https://unpkg.com/@solana/spl-token@0.4.8/lib/index.iife.min.js"></script>
-  <!-- Fallback for spl-token -->
-  <script>
-    window.addEventListener("load", () => {
-      if (!window.splToken || typeof window.splToken.getAssociatedTokenAddress !== "function") {
-        console.warn("spl-token failed to load from unpkg, trying jsdelivr...");
-        const script = document.createElement("script");
-        script.src = "https://cdn.jsdelivr.net/npm/@solana/spl-token@0.4.8/lib/index.iife.min.js";
-        script.async = true;
-        script.onload = () => console.log("spl-token loaded from jsdelivr");
-        script.onerror = () => console.error("Failed to load spl-token from jsdelivr");
-        document.head.appendChild(script);
-      }
-    });
-  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@solana/spl-token@0.4.8/lib/index.iife.min.js"></script>
 </head>
 <body>
   <div id="nav-controls">
@@ -422,7 +207,7 @@ Below is the fully updated HTML file. The changes include:
       !window.CryptoJS
     ) {
       document.getElementById("status").textContent =
-        "Error: Required libraries failed to load. Please refresh or check console for details.";
+        "Error: Required libraries failed to load. Check console for details.";
       console.error("Library issue:", {
         solanaWeb3: !!window.solanaWeb3,
         splToken: !!window.splToken,
@@ -462,36 +247,8 @@ Below is the fully updated HTML file. The changes include:
     const viewFeedbackBtn = document.getElementById("view-feedback");
     const feedbackList = document.getElementById("feedback-list");
 
-    // Navigation buttons
-    homeBtn.addEventListener("click", () => {
-      console.log("Navigating to homepage");
-      const currentPath = window.location.pathname;
-      if (currentPath === "/" || currentPath === "/index.html") {
-        statusDiv.textContent = "Already on homepage.";
-        return;
-      }
-      try {
-        window.location.href = "/index.html"; // Explicit file path
-      } catch (err) {
-        console.error("Navigation to homepage failed:", err);
-        statusDiv.textContent = "Error: Failed to navigate to homepage. Check console.";
-      }
-    });
-
-    whitepaperBtn.addEventListener("click", () => {
-      console.log("Navigating to whitepaper");
-      const currentPath = window.location.pathname;
-      if (currentPath === "/whitepaper.html") {
-        statusDiv.textContent = "Already on whitepaper page.";
-        return;
-      }
-      try {
-        window.location.href = "/whitepaper.html"; // Explicit file path
-      } catch (err) {
-        console.error("Navigation to whitepaper failed:", err);
-        statusDiv.textContent = "Error: Failed to navigate to whitepaper. Check console.";
-      }
-    });
+    homeBtn.addEventListener("click", () => window.location.href = "index.html");
+    whitepaperBtn.addEventListener("click", () => window.location.href = "whitepaper.html");
 
     donationAddress.addEventListener("click", () => {
       navigator.clipboard.writeText("solmemetics.sol").then(() => {
@@ -604,6 +361,7 @@ Below is the fully updated HTML file. The changes include:
           tokenProgramId
         );
 
+        // Check if the token account exists
         const accountInfo = await connection.getAccountInfo(fromTokenAccount);
         if (!accountInfo) {
           statusDiv.textContent = "Creating token account...";
@@ -677,28 +435,22 @@ Below is the fully updated HTML file. The changes include:
       }
     }
 
-    let connected = false;
-
     async function checkPhantomAndConnect() {
       if (!window.solana || !window.solana.isPhantom) {
         statusDiv.textContent = "Phantom Wallet not found. Please install Phantom.";
-        console.error("Phantom Wallet not detected");
         window.open("https://phantom.app/", "_blank");
         usernameInput.disabled = true;
         feedbackInput.disabled = true;
         feedbackSubmit.disabled = true;
         viewFeedbackBtn.style.display = "none";
-        return false;
+        return;
       }
       try {
         const provider = window.solana;
-        console.log("Attempting to connect to Phantom Wallet...");
         await provider.connect({ onlyIfTrusted: false });
         connected = true;
         const publicKey = provider.publicKey;
-        console.log("Connected to wallet:", publicKey.toBase58());
         statusDiv.textContent = `Connected: ${publicKey.toBase58().slice(0, 6)}...`;
-        connectBtn.textContent = "Disconnect";
         usernameInput.disabled = false;
         feedbackInput.disabled = false;
         feedbackSubmit.disabled = false;
@@ -706,11 +458,10 @@ Below is the fully updated HTML file. The changes include:
         const connection = new Connection(RPC_ENDPOINT, { commitment: "confirmed" });
         try {
           new PublicKey(TOKEN_MINT);
-          console.log("Token mint validated:", TOKEN_MINT.toBase58());
         } catch (formatError) {
           console.error("Invalid mint address format:", formatError);
           statusDiv.textContent = "Error: SMM token mint address is malformed.";
-          return false;
+          return;
         }
         statusDiv.textContent += " Validating SMM token mint...";
         try {
@@ -718,17 +469,17 @@ Below is the fully updated HTML file. The changes include:
           if (!mintInfo.value) {
             statusDiv.textContent = "Error: SMM token mint does not exist on Mainnet.";
             console.error("Mint not found:", TOKEN_MINT.toBase58());
-            return false;
+            return;
           }
           if (mintInfo.value.data.program !== "spl-token") {
             statusDiv.textContent = "Error: Address is not a valid SPL token mint for SMM.";
             console.error("Invalid token mint program:", TOKEN_MINT.toBase58());
-            return false;
+            return;
           }
         } catch (mintError) {
           console.error("Mint validation error:", mintError);
           statusDiv.textContent = `Error: Failed to validate SMM token mint - ${mintError.message}`;
-          return false;
+          return;
         }
         statusDiv.textContent += " Checking SMM token balance...";
         let tokenBalance = 0;
@@ -741,7 +492,6 @@ Below is the fully updated HTML file. The changes include:
           );
           const balanceResponse = await connection.getTokenAccountBalance(tokenAccount);
           tokenBalance = balanceResponse.value.uiAmount || 0;
-          console.log("Token balance:", tokenBalance);
         } catch (err) {
           console.warn("No SMM token account found or balance is zero:", err);
         }
@@ -802,81 +552,10 @@ Below is the fully updated HTML file. The changes include:
           statusDiv.textContent = "Fetching feedback...";
           await fetchFeedback();
         };
-        return true;
       } catch (err) {
         console.error("Connection error:", err);
-        statusDiv.textContent = `Error: Failed to connect to Phantom Wallet - ${err.message}`;
+        statusDiv.textContent = `Error: Failed to connect - ${err.message}`;
         usernameInput.disabled = true;
         feedbackInput.disabled = true;
         feedbackSubmit.disabled = true;
-        viewFeedbackBtn.style.display = "none";
-        return false;
-      }
-    }
-
-    connectBtn.addEventListener("click", async () => {
-      console.log("Connect button clicked, connected state:", connected);
-      if (!connected) {
-        const success = await checkPhantomAndConnect();
-        if (success && window.solana?.isConnected) {
-          connectBtn.textContent = "Disconnect";
-          connected = true;
-        }
-      } else {
-        try {
-          console.log("Disconnecting from Phantom Wallet...");
-          await window.solana.disconnect();
-          connectBtn.textContent = "Connect";
-          balanceDiv.textContent = "Balance: 0 SMM";
-          statusDiv.textContent = "Disconnected from Phantom Wallet.";
-          usernameInput.disabled = true;
-          feedbackInput.disabled = true;
-          feedbackSubmit.disabled = true;
-          viewFeedbackBtn.style.display = "none";
-          feedbackList.innerHTML = "";
-          connected = false;
-        } catch (err) {
-          console.error("Disconnect error:", err);
-          statusDiv.textContent = `Error: Failed to disconnect - ${err.message}`;
-        }
-      }
-    });
-
-    window.addEventListener("load", async () => {
-      console.log("Window loaded, checking Phantom and libraries...");
-      if (!window.solana || !window.solana.isPhantom) {
-        statusDiv.textContent = "Phantom Wallet not found. Please install Phantom.";
-        console.warn("Phantom Wallet not detected");
-        usernameInput.disabled = true;
-        feedbackInput.disabled = true;
-        feedbackSubmit.disabled = true;
-        viewFeedbackBtn.style.display = "none";
-        return;
-      }
-      if (!window.solanaWeb3 || !window.splToken || !window.CryptoJS) {
-        statusDiv.textContent = "Error: Failed to load required libraries. Please refresh or check console.";
-        console.error("Library check failed:", {
-          solanaWeb3: !!window.solanaWeb3,
-          splToken: !!window.splToken,
-          CryptoJS: !!window.CryptoJS
-        });
-        usernameInput.disabled = true;
-        feedbackInput.disabled = true;
-        feedbackSubmit.disabled = true;
-        viewFeedbackBtn.style.display = "none";
-        return;
-      }
-      try {
-        const provider = window.solana;
-        if (provider.isConnected) {
-          console.log("Auto-connecting to Phantom Wallet...");
-          await checkPhantomAndConnect();
-        }
-      } catch (err) {
-        console.error("Auto-connect error:", err);
-        statusDiv.textContent = `Error: Auto-connect failed - ${err.message}`;
-      }
-    });
-  </script>
-</body>
-</html>
+        viewFeedbackBtn.style.display target="_blank">https://solmemetics-feedback.onrender.com</a>
