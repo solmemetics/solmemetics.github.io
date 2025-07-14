@@ -198,6 +198,7 @@
   </div>
 
   <script>
+    // Debug the global object
     console.log("splToken loaded:", window.splToken, typeof window.splToken?.getAssociatedTokenAddress);
 
     if (
@@ -231,8 +232,8 @@
     const FEEDBACK_FEE = 1000;
     const RECIPIENT_ADDRESS = new PublicKey("Cj64jfCQ2dR5Utf62nMnmEq8fjerAk4u1mZY1Hv53QZA");
     const LAUNCH_WALLET = "Cj64jfCQ2dR5Utf62nMnmEq8fjerAk4u1mZY1Hv53QZA";
-    const ENCRYPTION_KEY = "solmemetics-secret-2025";
-    const RPC_ENDPOINT = "https://silent-fluent-diamond.solana-mainnet.quiknode.pro/bdf6a6133f8736f5bf9097f4628841fe18b60bcc/";
+    const ENCRYPTION_KEY = "solmemetics-secret-2025"; // Replace with secure key
+    const RPC_ENDPOINT = "https://silent-fluent-diamond.solana-mainnet.quiknode.pro/bdf6a6133f8736f5bf9097f4628841fe18b60bcc/"; // Replace with your RPC URL
 
     const connectBtn = document.getElementById("connect");
     const statusDiv = document.getElementById("status");
@@ -247,8 +248,8 @@
     const viewFeedbackBtn = document.getElementById("view-feedback");
     const feedbackList = document.getElementById("feedback-list");
 
-    homeBtn.addEventListener("click", () => window.location.href = "/");
-whitepaperBtn.addEventListener("click", () => window.location.href = "/whitepaper.html");
+    homeBtn.addEventListener("click", () => window.location.href = "index.html");
+    whitepaperBtn.addEventListener("click", () => window.location.href = "whitepaper.html");
 
     donationAddress.addEventListener("click", () => {
       navigator.clipboard.writeText("solmemetics.sol").then(() => {
@@ -274,6 +275,9 @@ whitepaperBtn.addEventListener("click", () => window.location.href = "/whitepape
     ];
 
     function getRandomTagline(excludeIndex) {
+      let newIndex;
+      do {
+        newIndex = Math.floor(Mathethod.getRandomTagline(excludeIndex) {
       let newIndex;
       do {
         newIndex = Math.floor(Math.random() * taglines.length);
@@ -354,12 +358,7 @@ whitepaperBtn.addEventListener("click", () => window.location.href = "/whitepape
     async function transferFeedbackFee(connection, provider, fromPubkey) {
       try {
         const tokenProgramId = window.splToken.TOKEN_PROGRAM_ID;
-        let fromTokenAccount = await window.splToken.getAssociatedTokenAddress(
-          TOKEN_MINT,
-          fromPubkey,
-          false,
-          tokenProgramId
-        );
+        let fromTokenAccount = await window.splToken.getAssociatedToken...
 
         // Check if the token account exists
         const accountInfo = await connection.getAccountInfo(fromTokenAccount);
@@ -558,4 +557,63 @@ whitepaperBtn.addEventListener("click", () => window.location.href = "/whitepape
         usernameInput.disabled = true;
         feedbackInput.disabled = true;
         feedbackSubmit.disabled = true;
-        viewFeedbackBtn.style.display target="_blank">https://solmemetics-feedback.onrender.com</a>
+        viewFeedbackBtn.style.display = "none";
+      }
+    }
+
+    let connected = false;
+
+    connectBtn.addEventListener("click", async () => {
+      if (!connected) {
+        await checkPhantomAndConnect();
+        if (window.solana?.isConnected) {
+          connectBtn.textContent = "Disconnect";
+          connected = true;
+        }
+      } else {
+        try {
+          await window.solana.disconnect();
+          connectBtn.textContent = "Connect";
+          balanceDiv.textContent = "Balance: 0 SMM";
+          statusDiv.textContent = "Disconnected from Phantom Wallet.";
+          usernameInput.disabled = true;
+          feedbackInput.disabled = true;
+          feedbackSubmit.disabled = true;
+          viewFeedbackBtn.style.display = "none";
+          feedbackList.innerHTML = "";
+          connected = false;
+        } catch (err) {
+          console.error("Disconnect error:", err);
+          statusDiv.textContent = `Error: Failed to disconnect - ${err.message}`;
+        }
+      }
+    });
+
+    window.addEventListener("load", async () => {
+      if (!window.solana || !window.solana.isPhantom) {
+        statusDiv.textContent = "Phantom Wallet not found. Please install Phantom.";
+        usernameInput.disabled = true;
+        feedbackInput.disabled = true;
+        feedbackSubmit.disabled = true;
+        viewFeedbackBtn.style.display = "none";
+        return;
+      }
+      if (!window.solanaWeb3 || !window.splToken || !window.CryptoJS) {
+        statusDiv.textContent = "Error: Failed to load required libraries (web3.js, spl-token, or CryptoJS). Check console for details.";
+        usernameInput.disabled = true;
+        feedbackInput.disabled = true;
+        feedbackSubmit.disabled = true;
+        viewFeedbackBtn.style.display = "none";
+        return;
+      }
+      try {
+        const provider = window.solana;
+        if (provider.isConnected) await checkPhantomAndConnect();
+      } catch (err) {
+        console.error("Auto-connect error:", err);
+        statusDiv.textContent = `Error: Auto-connect failed - ${err.message}`;
+      }
+    });
+  </script>
+</body>
+</html>
