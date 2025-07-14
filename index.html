@@ -186,7 +186,7 @@
       <textarea id="feedback-input" class="feedback-textarea" placeholder="Enter your feedback (requires 1000 SMM tokens)" disabled></textarea>
       <button id="feedback-submit" class="feedback-button" disabled>Submit Feedback</button>
       <button id="view-feedback" class="feedback-button" style="display: none;">View Feedback</button>
-    </div>
+    </div> 
     <div id="feedback-list"></div>
     <div id="status"></div>
   </div>
@@ -194,7 +194,7 @@
     <div class="donation-text">
       Help fund the project by donating Solana/USDC to <span id="donation-address" class="copyable">solmemetics.sol</span>
     </div>
-    <div class="version">v0.0509f</div>
+    <div class="version">v0.0509g</div>
   </div>
 
   <script>
@@ -247,8 +247,26 @@
     const viewFeedbackBtn = document.getElementById("view-feedback");
     const feedbackList = document.getElementById("feedback-list");
 
-    homeBtn.addEventListener("click", () => window.location.href = "index.html");
-    whitepaperBtn.addEventListener("click", () => window.location.href = "whitepaper.html");
+    // Fix navigation buttons
+    homeBtn.addEventListener("click", () => {
+      console.log("Navigating to homepage");
+      try {
+        window.location.href = "/"; // Adjust for Render.com or local setup
+      } catch (err) {
+        console.error("Navigation to homepage failed:", err);
+        statusDiv.textContent = "Error: Failed to navigate to homepage.";
+      }
+    });
+
+    whitepaperBtn.addEventListener("click", () => {
+      console.log("Navigating to whitepaper");
+      try {
+        window.location.href = "/whitepaper"; // Adjust for Render.com or local setup
+      } catch (err) {
+        console.error("Navigation to whitepaper failed:", err);
+        statusDiv.textContent = "Error: Failed to navigate to whitepaper.";
+      }
+    });
 
     donationAddress.addEventListener("click", () => {
       navigator.clipboard.writeText("solmemetics.sol").then(() => {
@@ -361,7 +379,242 @@
           tokenProgramId
         );
 
-        // Check if the token account exists
+        const accountInfo = await connection.getAccountInfo(fromTokenAccount);
+        if (!accountInfo) {
+          statusDiv.textContent = "Creating token account...";
+          const transaction = new Transaction().add(
+            window.splToken.createAssociatedTokenAccountInstruction(
+              fromPubkey,
+              fromTokenAccount,
+              fromPubkey black;
+    }
+  </style>
+</head>
+<body>
+  <div id="nav-controls">
+    <button id="home" class="nav-button">Homepage</button>
+    <button id="whitepaper" class="nav-button">Whitepaper</button>
+  </div>
+  <div id="controls">
+    <div id="balance">Balance: 0 SMM</div>
+    <button id="connect" class="connect-button">Connect</button>
+  </div>
+  <div class="content">
+    <img src="your-image.png" alt="Coming Soon" />
+    <div class="tagline" id="tagline"></div>
+    <div class="social-links">
+      <a href="https://t.me/solmemeticsTG" target="_blank" title="Join our Telegram">
+        <img src="telegram.png" alt="Telegram" class="social-icon" />
+      </a>
+      <a href="https://jup.ag/tokens/BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups" target="_blank" title="Trade on Jupiter">
+        <img src="jupiter.png" alt="Jupiter" class="social-icon jupiter-icon" />
+      </a>
+      <a href="https://x.com/solmemetics" target="_blank" title="Follow us on Twitter">
+        <img src="twitter.png" alt="Twitter" class="social-icon" />
+      </a>
+    </div>
+    <div class="feedback-container">
+      <input id="username-input" class="feedback-input" placeholder="Username (optional)" disabled />
+      <textarea id="feedback-input" class="feedback-textarea" placeholder="Enter your feedback (requires 1000 SMM tokens)" disabled></textarea>
+      <button id="feedback-submit" class="feedback-button" disabled>Submit Feedback</button>
+      <button id="view-feedback" class="feedback-button" style="display: none;">View Feedback</button>
+    </div>
+    <div id="feedback-list"></div>
+    <div id="status"></div>
+  </div>
+  <div class="donation-container">
+    <div class="donation-text">
+      Help fund the project by donating Solana/USDC to <span id="donation-address" class="copyable">solmemetics.sol</span>
+    </div>
+    <div class="version">v0.0509e</div>
+  </div>
+
+  <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@solana/spl-token@0.4.8/lib/index.iife.min.js"></script>
+
+  <script>
+    console.log("splToken loaded:", window.splToken, typeof window.splToken?.getAssociatedTokenAddress);
+
+    if (
+      !window.solanaWeb3 ||
+      !window.splToken ||
+      typeof window.splToken.getAssociatedTokenAddress !== "function" ||
+      !window.CryptoJS
+    ) {
+      document.getElementById("status").textContent =
+        "Error: Required libraries failed to load. Check console for details.";
+      console.error("Library issue:", {
+        solanaWeb3: !!window.solanaWeb3,
+        splToken: !!window.splToken,
+        getAssociatedTokenAddress: typeof window.splToken?.getAssociatedTokenAddress,
+        CryptoJS: !!window.CryptoJS
+      });
+      throw new Error("One or more required libraries not loaded.");
+    }
+
+    const { PublicKey, Connection, Transaction } = window.solanaWeb3;
+    const {
+      getAssociatedTokenAddress,
+      createAssociatedTokenAccountInstruction,
+      createTransferInstruction,
+      TOKEN_PROGRAM_ID
+    } = window.splToken;
+
+    const TOKEN_MINT = new PublicKey("BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups");
+    const TOTAL_SUPPLY = 100000000;
+    const ONE_PERCENT = TOTAL_SUPPLY * 0.01;
+    const FEEDBACK_FEE = 1000;
+    const RECIPIENT_ADDRESS = new PublicKey("Cj64jfCQ2dR5Utf62nMnmEq8fjerAk4u1mZY1Hv53QZA");
+    const LAUNCH_WALLET = "Cj64jfCQ2dR5Utf62nMnmEq8fjerAk4u1mZY1Hv53QZA";
+    const ENCRYPTION_KEY = "solmemetics-secret-2025";
+    const RPC_ENDPOINT = "https://silent-fluent-diamond.solana-mainnet.quiknode.pro/bdf6a6133f8736f5bf9097f4628841fe18b60bcc/";
+
+    const connectBtn = document.getElementById("connect");
+    const statusDiv = document.getElementById("status");
+    const balanceDiv = document.getElementById("balance");
+    const homeBtn = document.getElementById("home");
+    const whitepaperBtn = document.getElementById("whitepaper");
+    const donationAddress = document.getElementById("donation-address");
+    const taglineDiv = document.getElementById("tagline");
+    const usernameInput = document.getElementById("username-input");
+    const feedbackInput = document.getElementById("feedback-input");
+    const feedbackSubmit = document.getElementById("feedback-submit");
+    const viewFeedbackBtn = document.getElementById("view-feedback");
+    const feedbackList = document.getElementById("feedback-list");
+
+    // Fix navigation buttons
+    homeBtn.addEventListener("click", () => {
+      console.log("Navigating to homepage");
+      try {
+        window.location.href = "/"; // Adjust for Render.com or local setup
+      } catch (err) {
+        console.error("Navigation to homepage failed:", err);
+        statusDiv.textContent = "Error: Failed to navigate to homepage.";
+      }
+    });
+
+    whitepaperBtn.addEventListener("click", () => {
+      console.log("Navigating to whitepaper");
+      try {
+        window.location.href = "/whitepaper"; // Adjust for Render.com or local setup
+      } catch (err) {
+        console.error("Navigation to whitepaper failed:", err);
+        statusDiv.textContent = "Error: Failed to navigate to whitepaper.";
+      }
+    });
+
+    donationAddress.addEventListener("click", () => {
+      navigator.clipboard.writeText("solmemetics.sol").then(() => {
+        const originalText = donationAddress.textContent;
+        donationAddress.textContent = "Copied!";
+        setTimeout(() => donationAddress.textContent = originalText, 2000);
+      }).catch(err => {
+        console.error("Copy failed:", err);
+        donationAddress.textContent = "Copy failed!";
+        setTimeout(() => donationAddress.textContent = "solmemetics.sol", 2000);
+      });
+    });
+
+    const taglines = [
+      "Empowering the future of memes on Solana",
+      "Join the Solmemetics revolution!",
+      "Your gateway to meme-driven crypto",
+      "What are you talking about",
+      "I smell good",
+      "Probably nothing",
+      "Damn, you're looking good today",
+      "Did you buy yet?"
+    ];
+
+    function getRandomTagline(excludeIndex) {
+      let newIndex;
+      do {
+        newIndex = Math.floor(Math.random() * taglines.length);
+      } while (newIndex === excludeIndex && taglines.length > 1);
+      return { index: newIndex, tagline: taglines[newIndex] };
+    }
+
+    function updateTagline() {
+      const lastIndex = localStorage.getItem("lastTaglineIndex");
+      const { index, tagline } = getRandomTagline(lastIndex ? parseInt(lastIndex) : null);
+      taglineDiv.textContent = tagline;
+      localStorage.setItem("lastTaglineIndex", index);
+    }
+
+    updateTagline();
+    setInterval(updateTagline, 50000);
+
+    function encryptFeedback(data) {
+      try {
+        return CryptoJS.AES.encrypt(JSON.stringify(data), ENCRYPTION_KEY).toString();
+      } catch (err) {
+        console.error("Encryption failed:", err);
+        statusDiv.textContent = "Error: Failed to encrypt feedback.";
+        return null;
+      }
+    }
+
+    async function submitFeedback(publicKey, username, feedback) {
+      const encryptedData = encryptFeedback({ username, feedback });
+      if (!encryptedData) return;
+      try {
+        const response = await fetch('https://solmemetics-feedback.onrender.com/feedback', {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ publicKey: publicKey.toBase58(), encryptedData, timestamp: new Date().toISOString() })
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}: Failed to submit feedback`);
+        statusDiv.textContent = "Feedback submitted successfully!";
+        usernameInput.value = "";
+        feedbackInput.value = "";
+      } catch (err) {
+        console.error("Feedback submission error:", err);
+        statusDiv.textContent = `Error: Failed to submit feedback - ${err.message}`;
+      }
+    }
+
+    async function fetchFeedback() {
+      try {
+        const response = await fetch('https://solmemetics-feedback.onrender.com/get-feedback', {
+          method: "GET"
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}: Failed to fetch feedback`);
+        const feedbackData = await response.json();
+        feedbackList.innerHTML = "";
+        if (feedbackData.length === 0) {
+          feedbackList.innerHTML = "<p>No feedback available.</p>";
+          return;
+        }
+        feedbackData.forEach(item => {
+          try {
+            const decrypted = CryptoJS.AES.decrypt(item.encryptedData, ENCRYPTION_KEY).toString(CryptoJS.enc.Utf8);
+            const { username, feedback } = JSON.parse(decrypted);
+            const div = document.createElement("div");
+            div.className = "feedback-item";
+            div.innerHTML = `<strong>${username || "Anonymous"}</strong> (${item.publicKey.slice(0, 6)}...): ${feedback} <br><small>${new Date(item.timestamp).toLocaleString()}</small>`;
+            feedbackList.appendChild(div);
+          } catch (err) {
+            console.error("Decryption error for item:", item, err);
+            feedbackList.innerHTML += `<p>Error decrypting feedback from ${item.publicKey.slice(0, 6)}...</p>`;
+          }
+        });
+      } catch (err) {
+        console.error("Fetch feedback error:", err);
+        statusDiv.textContent = `Error: Failed to fetch feedback - ${err.message}`;
+      }
+    }
+
+    async function transferFeedbackFee(connection, provider, fromPubkey) {
+      try {
+        const tokenProgramId = window.splToken.TOKEN_PROGRAM_ID;
+        let fromTokenAccount = await window.splToken.getAssociatedTokenAddress(
+          TOKEN_MINT,
+          fromPubkey,
+          false,
+          tokenProgramId
+        );
+
         const accountInfo = await connection.getAccountInfo(fromTokenAccount);
         if (!accountInfo) {
           statusDiv.textContent = "Creating token account...";
@@ -435,6 +688,8 @@
       }
     }
 
+    let connected = false;
+
     async function checkPhantomAndConnect() {
       if (!window.solana || !window.solana.isPhantom) {
         statusDiv.textContent = "Phantom Wallet not found. Please install Phantom.";
@@ -443,14 +698,16 @@
         feedbackInput.disabled = true;
         feedbackSubmit.disabled = true;
         viewFeedbackBtn.style.display = "none";
-        return;
+        return false;
       }
       try {
         const provider = window.solana;
+        console.log("Attempting to connect to Phantom Wallet...");
         await provider.connect({ onlyIfTrusted: false });
         connected = true;
         const publicKey = provider.publicKey;
         statusDiv.textContent = `Connected: ${publicKey.toBase58().slice(0, 6)}...`;
+        connectBtn.textContent = "Disconnect";
         usernameInput.disabled = false;
         feedbackInput.disabled = false;
         feedbackSubmit.disabled = false;
@@ -461,7 +718,7 @@
         } catch (formatError) {
           console.error("Invalid mint address format:", formatError);
           statusDiv.textContent = "Error: SMM token mint address is malformed.";
-          return;
+          return false;
         }
         statusDiv.textContent += " Validating SMM token mint...";
         try {
@@ -469,17 +726,17 @@
           if (!mintInfo.value) {
             statusDiv.textContent = "Error: SMM token mint does not exist on Mainnet.";
             console.error("Mint not found:", TOKEN_MINT.toBase58());
-            return;
+            return false;
           }
           if (mintInfo.value.data.program !== "spl-token") {
             statusDiv.textContent = "Error: Address is not a valid SPL token mint for SMM.";
             console.error("Invalid token mint program:", TOKEN_MINT.toBase58());
-            return;
+            return false;
           }
         } catch (mintError) {
           console.error("Mint validation error:", mintError);
           statusDiv.textContent = `Error: Failed to validate SMM token mint - ${mintError.message}`;
-          return;
+          return false;
         }
         statusDiv.textContent += " Checking SMM token balance...";
         let tokenBalance = 0;
@@ -552,16 +809,75 @@
           statusDiv.textContent = "Fetching feedback...";
           await fetchFeedback();
         };
+        return true;
       } catch (err) {
         console.error("Connection error:", err);
         statusDiv.textContent = `Error: Failed to connect - ${err.message}`;
         usernameInput.disabled = true;
         feedbackInput.disabled = true;
         feedbackSubmit.disabled = true;
-        viewFeedbackBtn.style.display target="_blank">https://solmemetics-feedback.onrender.com</a> is operational for feedback submission.
-- **Image Assets**: Ensure `your-image.png`, `telegram.png`, `jupiter.png`, and `twitter.png` are in the correct directory or provide valid URLs.
-- **Testing**: Open the browser's Developer Tools (F12) and check the Console for errors. Test connecting to Phantom Wallet, checking balance, and submitting feedback.
-- **Security**: The `ENCRYPTION_KEY` is hardcoded. For production, use a secure method to manage it (e.g., environment variables or a secure vault).
-- **RPC Endpoint**: If the provided QuickNode RPC endpoint fails, try a public one like `https://api.mainnet-beta.solana.com` or ensure your QuickNode subscription is active.
+        viewFeedbackBtn.style.display = "none";
+        return false;
+      }
+    }
 
-This corrected HTML should resolve the library loading issue and other errors. If you encounter further issues, please share the specific error messages from the browser Console, and I'll help debug further!
+    connectBtn.addEventListener("click", async () => {
+      if (!connected) {
+        console.log("Connect button clicked, attempting to connect...");
+        const success = await checkPhantomAndConnect();
+        if (success && window.solana?.isConnected) {
+          connectBtn.textContent = "Disconnect";
+          connected = true;
+        }
+      } else {
+        try {
+          console.log("Disconnect button clicked, disconnecting...");
+          await window.solana.disconnect();
+          connectBtn.textContent = "Connect";
+          balanceDiv.textContent = "Balance: 0 SMM";
+          statusDiv.textContent = "Disconnected from Phantom Wallet.";
+          usernameInput.disabled = true;
+          feedbackInput.disabled = true;
+          feedbackSubmit.disabled = true;
+          viewFeedbackBtn.style.display = "none";
+          feedbackList.innerHTML = "";
+          connected = false;
+        } catch (err) {
+          console.error("Disconnect error:", err);
+          statusDiv.textContent = `Error: Failed to disconnect - ${err.message}`;
+        }
+      }
+    });
+
+    window.addEventListener("load", async () => {
+      console.log("Window loaded, checking Phantom connection...");
+      if (!window.solana || !window.solana.isPhantom) {
+        statusDiv.textContent = "Phantom Wallet not found. Please install Phantom.";
+        usernameInput.disabled = true;
+        feedbackInput.disabled = true;
+        feedbackSubmit.disabled = true;
+        viewFeedbackBtn.style.display = "none";
+        return;
+      }
+      if (!window.solanaWeb3 || !window.splToken || !window.CryptoJS) {
+        statusDiv.textContent = "Error: Failed to load required libraries (web3.js, spl-token, or CryptoJS). Check console for details.";
+        usernameInput.disabled = true;
+        feedbackInput.disabled = true;
+        feedbackSubmit.disabled = true;
+        viewFeedbackBtn.style.display = "none";
+        return;
+      }
+      try {
+        const provider = window.solana;
+        if (provider.isConnected) {
+          console.log("Auto-connecting to Phantom Wallet...");
+          await checkPhantomAndConnect();
+        }
+      } catch (err) {
+        console.error("Auto-connect error:", err);
+        statusDiv.textContent = `Error: Auto-connect failed - ${err.message}`;
+      }
+    });
+  </script>
+</body>
+</html>
