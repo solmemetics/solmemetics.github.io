@@ -203,16 +203,17 @@
   console.log("splToken loaded:", typeof window.splToken?.getAssociatedTokenAddress);
 
 
-  // Rest of your code
-  if (!window.solanaWeb3 || !window.splToken || !window.CryptoJS) {
-    document.getElementById("status").textContent = "Error: Failed to load required libraries (web3.js, spl-token, or CryptoJS). Check console for details.";
-    console.error("Library loading issue:", {
-      solanaWeb3: !!window.solanaWeb3,
-      splToken: !!window.splToken,
-      CryptoJS: !!window.CryptoJS
-    });
-    throw new Error("Library loading failed");
-    }
+// Rest of your code
+if (!window.solanaWeb3 || !window.splToken || !window.CryptoJS) {
+  document.getElementById("status").textContent =
+    "Error: Failed to load required libraries (web3.js, spl-token, or CryptoJS). Check console for details.";
+  console.error("Library loading issue:", {
+    solanaWeb3: !!window.solanaWeb3,
+    splToken: !!window.splToken,
+    CryptoJS: !!window.CryptoJS
+  });
+  throw new Error("Library loading failed");
+}
 
     if (typeof window.splToken.getAssociatedTokenAddress !== 'function') {
       document.getElementById("status").textContent = "Error: spl-token library loaded, but getAssociatedTokenAddress not found.";
