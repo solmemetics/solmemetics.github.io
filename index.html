@@ -191,42 +191,40 @@
     <div class="donation-text">
       Help fund the project by donating Solana/USDC to <span id="donation-address" class="copyable">solmemetics.sol</span>
     </div>
-    <div class="version">v0.0509</div>
+    <div class="version">v0.0509a</div>
   </div>
 
   <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-  <script src="https://unpkg.com/@solana/spl-token@0.3.8/dist/browser/index.iife.js""
-        onload="window.splToken = splToken;">
-</script>
+  <script src="https://unpkg.com/@solana/spl-token@0.4.8/lib/index.iife.min.js"></script>
   <script>
-  console.log("splToken loaded:", typeof window.splToken?.getAssociatedTokenAddress);
-</script>
-  <script>
-        // Check if libraries loaded
+    // Assign spl-token exports to window.splToken for compatibility
+    window.splToken = window.SPLToken;
+
+    // Check if libraries loaded
     if (!window.solanaWeb3 || !window.splToken || !window.CryptoJS) {
-  document.getElementById("status").textContent = "Error: Failed to load required libraries (web3.js, spl-token, or CryptoJS). Check console for details.";
-  console.error("Library loading issue:", {
-    solanaWeb3: !!window.solanaWeb3,
-    splToken: !!window.splToken,
-    CryptoJS: !!window.CryptoJS
-  });
-  throw new Error("Library loading failed");
-}
+      document.getElementById("status").textContent = "Error: Failed to load required libraries (web3.js, spl-token, or CryptoJS). Check console for details.";
+      console.error("Library loading issue:", {
+        solanaWeb3: !!window.solanaWeb3,
+        splToken: !!window.splToken,
+        CryptoJS: !!window.CryptoJS
+      });
+      throw new Error("Library loading failed");
+    }
 
-if (typeof window.splToken.getAssociatedTokenAddress !== 'function') {
-  document.getElementById("status").textContent = "Error: spl-token library loaded, but getAssociatedTokenAddress not found.";
-  console.error("spl-token library issue: getAssociatedTokenAddress not available.");
-  throw new Error("spl-token function not found");
-}
+    if (typeof window.splToken.getAssociatedTokenAddress !== 'function') {
+      document.getElementById("status").textContent = "Error: spl-token library loaded, but getAssociatedTokenAddress not found.";
+      console.error("spl-token library issue: getAssociatedTokenAddress not available.");
+      throw new Error("spl-token function not found");
+    }
 
-const { PublicKey, Connection } = window.solanaWeb3;
-const {
-  getAssociatedTokenAddress,
-  createAssociatedTokenAccountInstruction,
-  createTransferInstruction,
-  TOKEN_PROGRAM_ID
-} = window.splToken;
+    const { PublicKey, Connection, Transaction } = window.solanaWeb3;
+    const {
+      getAssociatedTokenAddress,
+      createAssociatedTokenAccountInstruction,
+      createTransferInstruction,
+      TOKEN_PROGRAM_ID
+    } = window.splToken;
 
     const TOKEN_MINT = new PublicKey("BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups");
     const TOTAL_SUPPLY = 100000000;
@@ -305,54 +303,54 @@ const {
     }
 
     async function submitFeedback(publicKey, username, feedback) {
-  const encryptedData = encryptFeedback({ username, feedback });
-  if (!encryptedData) return;
-  try {
-    const response = await fetch('https://solmemetics-feedback.onrender.com/feedback', { // Update this
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ publicKey: publicKey.toBase58(), encryptedData, timestamp: new Date().toISOString() })
-    });
-    if (!response.ok) throw new Error(`HTTP ${response.status}: Failed to submit feedback`);
-    statusDiv.textContent = "Feedback submitted successfully!";
-    usernameInput.value = "";
-    feedbackInput.value = "";
-  } catch (err) {
-    console.error("Feedback submission error:", err);
-    statusDiv.textContent = `Error: Failed to submit feedback - ${err.message}`;
-  }
-}
-
-async function fetchFeedback() {
-  try {
-    const response = await fetch('https://solmemetics-feedback.onrender.com/get-feedback', { // Update this
-      method: "GET"
-    });
-    if (!response.ok) throw new Error(`HTTP ${response.status}: Failed to fetch feedback`);
-    const feedbackData = await response.json();
-    feedbackList.innerHTML = "";
-    if (feedbackData.length === 0) {
-      feedbackList.innerHTML = "<p>No feedback available.</p>";
-      return;
-    }
-    feedbackData.forEach(item => {
+      const encryptedData = encryptFeedback({ username, feedback });
+      if (!encryptedData) return;
       try {
-        const decrypted = CryptoJS.AES.decrypt(item.encryptedData, ENCRYPTION_KEY).toString(CryptoJS.enc.Utf8);
-        const { username, feedback } = JSON.parse(decrypted);
-        const div = document.createElement("div");
-        div.className = "feedback-item";
-        div.innerHTML = `<strong>${username || "Anonymous"}</strong> (${item.publicKey.slice(0, 6)}...): ${feedback} <br><small>${new Date(item.timestamp).toLocaleString()}</small>`;
-        feedbackList.appendChild(div);
+        const response = await fetch('https://solmemetics-feedback.onrender.com/feedback', {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ publicKey: publicKey.toBase58(), encryptedData, timestamp: new Date().toISOString() })
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}: Failed to submit feedback`);
+        statusDiv.textContent = "Feedback submitted successfully!";
+        usernameInput.value = "";
+        feedbackInput.value = "";
       } catch (err) {
-        console.error("Decryption error for item:", item, err);
-        feedbackList.innerHTML += `<p>Error decrypting feedback from ${item.publicKey.slice(0, 6)}...</p>`;
+        console.error("Feedback submission error:", err);
+        statusDiv.textContent = `Error: Failed to submit feedback - ${err.message}`;
       }
-    });
-  } catch (err) {
-    console.error("Fetch feedback error:", err);
-    statusDiv.textContent = `Error: Failed to fetch feedback - ${err.message}`;
-  }
-}
+    }
+
+    async function fetchFeedback() {
+      try {
+        const response = await fetch('https://solmemetics-feedback.onrender.com/get-feedback', {
+          method: "GET"
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}: Failed to fetch feedback`);
+        const feedbackData = await response.json();
+        feedbackList.innerHTML = "";
+        if (feedbackData.length === 0) {
+          feedbackList.innerHTML = "<p>No feedback available.</p>";
+          return;
+        }
+        feedbackData.forEach(item => {
+          try {
+            const decrypted = CryptoJS.AES.decrypt(item.encryptedData, ENCRYPTION_KEY).toString(CryptoJS.enc.Utf8);
+            const { username, feedback } = JSON.parse(decrypted);
+            const div = document.createElement("div");
+            div.className = "feedback-item";
+            div.innerHTML = `<strong>${username || "Anonymous"}</strong> (${item.publicKey.slice(0, 6)}...): ${feedback} <br><small>${new Date(item.timestamp).toLocaleString()}</small>`;
+            feedbackList.appendChild(div);
+          } catch (err) {
+            console.error("Decryption error for item:", item, err);
+            feedbackList.innerHTML += `<p>Error decrypting feedback from ${item.publicKey.slice(0, 6)}...</p>`;
+          }
+        });
+      } catch (err) {
+        console.error("Fetch feedback error:", err);
+        statusDiv.textContent = `Error: Failed to fetch feedback - ${err.message}`;
+      }
+    }
 
     async function transferFeedbackFee(connection, provider, fromPubkey) {
       try {
@@ -365,7 +363,7 @@ async function fetchFeedback() {
           return false;
         }
         const toTokenAccount = await getAssociatedTokenAddress(TOKEN_MINT, RECIPIENT_ADDRESS, false, tokenProgramId);
-        const transaction = new solanaWeb3.Transaction();
+        const transaction = new Transaction();
         const accountInfo = await connection.getAccountInfo(toTokenAccount);
         if (!accountInfo) {
           transaction.add(createAssociatedTokenAccountInstruction(fromPubkey, toTokenAccount, RECIPIENT_ADDRESS, TOKEN_MINT, tokenProgramId));
@@ -376,7 +374,7 @@ async function fetchFeedback() {
           return false;
         }
         transaction.add(createTransferInstruction(fromTokenAccount.pubkey, toTokenAccount, fromPubkey, FEEDBACK_FEE * 10 ** 9, []));
-        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+        const { megle, lastValidBlockHeight } = await connection.getLatestBlockhash();
         transaction.recentBlockhash = blockhash;
         transaction.feePayer = fromPubkey;
         const signedTransaction = await provider.signTransaction(transaction);
@@ -548,7 +546,7 @@ async function fetchFeedback() {
         viewFeedbackBtn.style.display = "none";
         return;
       }
-      if (!window.solanaWeb3 || !window.splToken.getAssociatedTokenAddress || !window.CryptoJS) {
+      if (!window.solanaWeb3 || !window.splToken || !window.CryptoJS) {
         statusDiv.textContent = "Error: Failed to load required libraries (web3.js, spl-token, or CryptoJS). Check console for details.";
         usernameInput.disabled = true;
         feedbackInput.disabled = true;
