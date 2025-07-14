@@ -154,6 +154,9 @@
     }
     .feedback-item { border-bottom: 1px solid #444; padding: 10px 0; }
   </style>
+  <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@solana/spl-token@0.4.8/lib/index.iife.min.js"></script>
 </head>
 <body>
   <div id="nav-controls">
@@ -191,35 +194,29 @@
     <div class="donation-text">
       Help fund the project by donating Solana/USDC to <span id="donation-address" class="copyable">solmemetics.sol</span>
     </div>
-    <div class="version">v0.0509e</div>
+    <div class="version">v0.0509f</div>
   </div>
 
-  <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@solana/spl-token@0.3.5/dist/browser/index.iife.js"></script>
+  <script>
+    console.log("splToken loaded:", window.splToken, typeof window.splToken?.getAssociatedTokenAddress);
 
-<script>
-  // Debug the global object
-  console.log("splToken loaded:", typeof window.splToken?.getAssociatedTokenAddress);
+    if (
+      !window.solanaWeb3 ||
+      !window.splToken ||
+      typeof window.splToken.getAssociatedTokenAddress !== "function" ||
+      !window.CryptoJS
+    ) {
+      document.getElementById("status").textContent =
+        "Error: Required libraries failed to load. Check console for details.";
+      console.error("Library issue:", {
+        solanaWeb3: !!window.solanaWeb3,
+        splToken: !!window.splToken,
+        getAssociatedTokenAddress: typeof window.splToken?.getAssociatedTokenAddress,
+        CryptoJS: !!window.CryptoJS
+      });
+      throw new Error("One or more required libraries not loaded.");
+    }
 
-
-// Rest of your code
-if (
-  !window.solanaWeb3 ||
-  !window.splToken ||
-  typeof window.splToken.getAssociatedTokenAddress !== "function" ||
-  !window.CryptoJS
-) {
-  document.getElementById("status").textContent =
-    "Error: Required libraries failed to load. Check console for details.";
-  console.error("Library issue:", {
-    solanaWeb3: !!window.solanaWeb3,
-    splToken: !!window.splToken,
-    getAssociatedTokenAddress: typeof window.splToken?.getAssociatedTokenAddress === "function",
-    CryptoJS: !!window.CryptoJS
-  });
-  throw new Error("One or more required libraries not loaded.");
-}
     const { PublicKey, Connection, Transaction } = window.solanaWeb3;
     const {
       getAssociatedTokenAddress,
@@ -234,8 +231,8 @@ if (
     const FEEDBACK_FEE = 1000;
     const RECIPIENT_ADDRESS = new PublicKey("Cj64jfCQ2dR5Utf62nMnmEq8fjerAk4u1mZY1Hv53QZA");
     const LAUNCH_WALLET = "Cj64jfCQ2dR5Utf62nMnmEq8fjerAk4u1mZY1Hv53QZA";
-    const ENCRYPTION_KEY = "solmemetics-secret-2025"; // Replace with secure key
-    const RPC_ENDPOINT = "https://silent-fluent-diamond.solana-mainnet.quiknode.pro/bdf6a6133f8736f5bf9097f4628841fe18b60bcc/"; // Replace with your RPC URL
+    const ENCRYPTION_KEY = "solmemetics-secret-2025";
+    const RPC_ENDPOINT = "https://silent-fluent-diamond.solana-mainnet.quiknode.pro/bdf6a6133f8736f5bf9097f4628841fe18b60bcc/";
 
     const connectBtn = document.getElementById("connect");
     const statusDiv = document.getElementById("status");
@@ -356,27 +353,74 @@ if (
 
     async function transferFeedbackFee(connection, provider, fromPubkey) {
       try {
-        const tokenProgramId = TOKEN_PROGRAM_ID;
-        const fromTokenAccount = (await connection.getParsedTokenAccountsByOwner(fromPubkey, { mint: TOKEN_MINT })).value.find(
-          acc => acc.account.data.parsed.info.mint === TOKEN_MINT.toBase58()
+        const tokenProgramId = window.splToken.TOKEN_PROGRAM_ID;
+        let fromTokenAccount = await window.splToken.getAssociatedTokenAddress(
+          TOKEN_MINT,
+          fromPubkey,
+          false,
+          tokenProgramId
         );
-        if (!fromTokenAccount) {
-          statusDiv.textContent = "Error: No SMM token account found.";
-          return false;
-        }
-        const toTokenAccount = await getAssociatedTokenAddress(TOKEN_MINT, RECIPIENT_ADDRESS, false, tokenProgramId);
-        const transaction = new Transaction();
-        const accountInfo = await connection.getAccountInfo(toTokenAccount);
+
+        // Check if the token account exists
+        const accountInfo = await connection.getAccountInfo(fromTokenAccount);
         if (!accountInfo) {
-          transaction.add(createAssociatedTokenAccountInstruction(fromPubkey, toTokenAccount, RECIPIENT_ADDRESS, TOKEN_MINT, tokenProgramId));
+          statusDiv.textContent = "Creating token account...";
+          const transaction = new Transaction().add(
+            window.splToken.createAssociatedTokenAccountInstruction(
+              fromPubkey,
+              fromTokenAccount,
+              fromPubkey,
+              TOKEN_MINT,
+              tokenProgramId
+            )
+          );
+          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+          transaction.recentBlockhash = blockhash;
+          transaction.feePayer = fromPubkey;
+          const signedTransaction = await provider.signTransaction(transaction);
+          const txId = await connection.sendRawTransaction(signedTransaction.serialize());
+          await connection.confirmTransaction({ signature: txId, blockhash, lastValidBlockHeight });
         }
-        const balance = fromTokenAccount.account.data.parsed.info.tokenAmount.uiAmount;
+
+        const toTokenAccount = await window.splToken.getAssociatedTokenAddress(
+          TOKEN_MINT,
+          RECIPIENT_ADDRESS,
+          false,
+          tokenProgramId
+        );
+
+        const transaction = new Transaction();
+        const toAccountInfo = await connection.getAccountInfo(toTokenAccount);
+        if (!toAccountInfo) {
+          transaction.add(
+            window.splToken.createAssociatedTokenAccountInstruction(
+              fromPubkey,
+              toTokenAccount,
+              RECIPIENT_ADDRESS,
+              TOKEN_MINT,
+              tokenProgramId
+            )
+          );
+        }
+
+        const balanceResponse = await connection.getTokenAccountBalance(fromTokenAccount);
+        const balance = balanceResponse.value.uiAmount;
         if (balance < FEEDBACK_FEE) {
           statusDiv.textContent = `Error: Insufficient balance. Need ${FEEDBACK_FEE} SMM, but only ${balance} SMM available.`;
           return false;
         }
-        transaction.add(createTransferInstruction(fromTokenAccount.pubkey, toTokenAccount, fromPubkey, FEEDBACK_FEE * 10 ** 9, []));
-        const { megle, lastValidBlockHeight } = await connection.getLatestBlockhash();
+
+        transaction.add(
+          window.splToken.createTransferInstruction(
+            fromTokenAccount,
+            toTokenAccount,
+            fromPubkey,
+            FEEDBACK_FEE * 10 ** 9,
+            []
+          )
+        );
+
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
         transaction.recentBlockhash = blockhash;
         transaction.feePayer = fromPubkey;
         const signedTransaction = await provider.signTransaction(transaction);
@@ -438,14 +482,18 @@ if (
           return;
         }
         statusDiv.textContent += " Checking SMM token balance...";
-        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(publicKey, { mint: TOKEN_MINT });
         let tokenBalance = 0;
-        for (const { account } of tokenAccounts.value) {
-          const info = account.data.parsed.info;
-          if (info.mint === TOKEN_MINT.toBase58()) {
-            tokenBalance = parseFloat(info.tokenAmount.uiAmount);
-            break;
-          }
+        try {
+          const tokenAccount = await window.splToken.getAssociatedTokenAddress(
+            TOKEN_MINT,
+            publicKey,
+            false,
+            window.splToken.TOKEN_PROGRAM_ID
+          );
+          const balanceResponse = await connection.getTokenAccountBalance(tokenAccount);
+          tokenBalance = balanceResponse.value.uiAmount || 0;
+        } catch (err) {
+          console.warn("No SMM token account found or balance is zero:", err);
         }
         const balanceString = tokenBalance.toString();
         const [integerPart, decimalPart] = balanceString.split('.');
@@ -504,70 +552,16 @@ if (
           statusDiv.textContent = "Fetching feedback...";
           await fetchFeedback();
         };
-        
       } catch (err) {
         console.error("Connection error:", err);
         statusDiv.textContent = `Error: Failed to connect - ${err.message}`;
         usernameInput.disabled = true;
         feedbackInput.disabled = true;
         feedbackSubmit.disabled = true;
-        viewFeedbackBtn.style.display = "none";
-      }
-    }
+        viewFeedbackBtn.style.display target="_blank">https://solmemetics-feedback.onrender.com</a> is operational for feedback submission.
+- **Image Assets**: Ensure `your-image.png`, `telegram.png`, `jupiter.png`, and `twitter.png` are in the correct directory or provide valid URLs.
+- **Testing**: Open the browser's Developer Tools (F12) and check the Console for errors. Test connecting to Phantom Wallet, checking balance, and submitting feedback.
+- **Security**: The `ENCRYPTION_KEY` is hardcoded. For production, use a secure method to manage it (e.g., environment variables or a secure vault).
+- **RPC Endpoint**: If the provided QuickNode RPC endpoint fails, try a public one like `https://api.mainnet-beta.solana.com` or ensure your QuickNode subscription is active.
 
-    let connected = false;
-
-connectBtn.addEventListener("click", async () => {
-  if (!connected) {
-    await checkPhantomAndConnect();
-    if (window.solana?.isConnected) {
-      connectBtn.textContent = "Disconnect";
-      connected = true;
-    }
-  } else {
-    try {
-      await window.solana.disconnect();
-      connectBtn.textContent = "Connect";
-      balanceDiv.textContent = "Balance: 0 SMM";
-      statusDiv.textContent = "Disconnected from Phantom Wallet.";
-      usernameInput.disabled = true;
-      feedbackInput.disabled = true;
-      feedbackSubmit.disabled = true;
-      viewFeedbackBtn.style.display = "none";
-      feedbackList.innerHTML = "";
-      connected = false;
-    } catch (err) {
-      console.error("Disconnect error:", err);
-      statusDiv.textContent = `Error: Failed to disconnect - ${err.message}`;
-    }
-  }
-});
-
-    window.addEventListener("load", async () => {
-      if (!window.solana || !window.solana.isPhantom) {
-        statusDiv.textContent = "Phantom Wallet not found. Please install Phantom.";
-        usernameInput.disabled = true;
-        feedbackInput.disabled = true;
-        feedbackSubmit.disabled = true;
-        viewFeedbackBtn.style.display = "none";
-        return;
-      }
-      if (!window.solanaWeb3 || !window.splToken || !window.CryptoJS) {
-        statusDiv.textContent = "Error: Failed to load required libraries (web3.js, spl-token, or CryptoJS). Check console for details.";
-        usernameInput.disabled = true;
-        feedbackInput.disabled = true;
-        feedbackSubmit.disabled = true;
-        viewFeedbackBtn.style.display = "none";
-        return;
-      }
-      try {
-        const provider = window.solana;
-        if (provider.isConnected) await checkPhantomAndConnect();
-      } catch (err) {
-        console.error("Auto-connect error:", err);
-        statusDiv.textContent = `Error: Auto-connect failed - ${err.message}`;
-      }
-    });
-  </script>
-</body>
-</html>
+This corrected HTML should resolve the library loading issue and other errors. If you encounter further issues, please share the specific error messages from the browser Console, and I'll help debug further!
