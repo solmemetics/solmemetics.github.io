@@ -191,7 +191,7 @@
     <div class="donation-text">
       Help fund the project by donating Solana/USDC to <span id="donation-address" class="copyable">solmemetics.sol</span>
     </div>
-    <div class="version">v0.0509d</div>
+    <div class="version">v0.0509e</div>
   </div>
 
   <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
@@ -204,23 +204,22 @@
 
 
 // Rest of your code
-if (!window.solanaWeb3 || !window.splToken || !window.CryptoJS) {
+if (
+  !window.solanaWeb3 ||
+  !window.splToken ||
+  typeof window.splToken.getAssociatedTokenAddress !== "function" ||
+  !window.CryptoJS
+) {
   document.getElementById("status").textContent =
-    "Error: Failed to load required libraries (web3.js, spl-token, or CryptoJS). Check console for details.";
-  console.error("Library loading issue:", {
+    "Error: Required libraries failed to load. Check console for details.";
+  console.error("Library issue:", {
     solanaWeb3: !!window.solanaWeb3,
     splToken: !!window.splToken,
+    getAssociatedTokenAddress: typeof window.splToken?.getAssociatedTokenAddress === "function",
     CryptoJS: !!window.CryptoJS
   });
-  throw new Error("Library loading failed");
+  throw new Error("One or more required libraries not loaded.");
 }
-
-    if (typeof window.splToken.getAssociatedTokenAddress !== 'function') {
-      document.getElementById("status").textContent = "Error: spl-token library loaded, but getAssociatedTokenAddress not found.";
-      console.error("spl-token library issue: getAssociatedTokenAddress not available.");
-      throw new Error("spl-token function not found");
-    }
-
     const { PublicKey, Connection, Transaction } = window.solanaWeb3;
     const {
       getAssociatedTokenAddress,
