@@ -248,8 +248,9 @@
     const viewFeedbackBtn = document.getElementById("view-feedback");
     const feedbackList = document.getElementById("feedback-list");
 
-    homeBtn.addEventListener("click", () => window.location.href = "/solmemetics/");
-    whitepaperBtn.addEventListener("click", () => window.location.href = "/solmemetics/whitepaper.html");
+    const basePath = window.location.pathname.split("/")[1] || "";
+    homeBtn.addEventListener("click", () => window.location.href = `/${basePath}/`);
+    whitepaperBtn.addEventListener("click", () => window.location.href = `/${basePath}/whitepaper.html`);
 
     donationAddress.addEventListener("click", () => {
       navigator.clipboard.writeText("solmemetics.sol").then(() => {
