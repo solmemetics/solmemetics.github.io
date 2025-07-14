@@ -191,16 +191,17 @@
     <div class="donation-text">
       Help fund the project by donating Solana/USDC to <span id="donation-address" class="copyable">solmemetics.sol</span>
     </div>
-    <div class="version">v0.0509b</div>
+    <div class="version">v0.0509c</div>
   </div>
 
   <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-<script src="https://unpkg.com/@solana/spl-token@0.5.0/lib/index.iife.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@solana/spl-token@0.3.5/dist/browser/index.iife.js"></script>
+
 <script>
   // Debug the global object
-  console.log("SPLToken:", window.SPLToken);
-  window.splToken = window.SPLToken; // Adjust if export name differs
+  console.log("splToken loaded:", typeof window.splToken?.getAssociatedTokenAddress);
+
 
   // Rest of your code
   if (!window.solanaWeb3 || !window.splToken || !window.CryptoJS) {
