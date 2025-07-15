@@ -54,7 +54,7 @@
       background-color: #e0e0e0;
     }
 
-    /* Style for Home and Whitepaper buttons */
+    /* Style for Home buttons */
     .nav-button {
       font-size: 16px;
       color: white;
@@ -101,7 +101,6 @@
 <body>
   <div id="nav-controls">
     <button id="home" class="nav-button">Solmemetics</button>
-    <button id="whitepaper" class="nav-button">Whitepaper</button>
   </div>
   <div id="controls">
     <div id="balance">Balance: 0 SMM</div>
@@ -125,15 +124,10 @@
     const statusDiv = document.getElementById("status");
     const balanceDiv = document.getElementById("balance");
     const homeBtn = document.getElementById("home");
-    const whitepaperBtn = document.getElementById("whitepaper");
 
     // Navigation button functionality
     homeBtn.addEventListener("click", () => {
-      window.location.href = "index.html"; // Assuming this is the home page
-    });
-
-    whitepaperBtn.addEventListener("click", () => {
-      window.location.href = "whitepaper.html";
+      window.location.href = "https://solmemetics.com"; // Assuming this is the home page
     });
 
     async function checkPhantomAndConnect() {
