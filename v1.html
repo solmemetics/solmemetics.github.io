@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solmemetics</title>
+  <style>
+    body {
+      background-color: black;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    img {
+      max-width: 300px;
+      height: auto;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 40px;
+    }
+
+    button {
+      padding: 12px 24px;
+      font-size: 16px;
+      background: white;
+      color: black;
+      border: none;
+      border-radius: 9999px;
+      cursor: pointer;
+    }
+
+    #status {
+      margin-top: 20px;
+      font-size: 16px;
+      color: #ccc;
+    }
+  </style>
+</head>
+<body>
+  <img src="your-image.png" alt="Coming Soon" />
+  <h1>Coming Soon</h1>
+  <button id="connect">Connect Phantom</button>
+  <div id="status"></div>
+
+  <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
+
+  <script>
+    // LetsBONK token mint address
+    const TOKEN_MINT = new solanaWeb3.PublicKey("CDBdbNqmrLu1PcgjrFG52yxg71QnFhBZcUE6PSFdbonk");
+
+    const connectBtn = document.getElementById("connect");
+    const statusDiv = document.getElementById("status");
+
+    async function checkPhantomAndConnect() {
+      // Check if Phantom is available
+      if (!window.solana || !window.solana.isPhantom) {
+        statusDiv.textContent = "Phantom Wallet not found. Please install Phantom.";
+        window.open("https://phantom.app/", "_blank");
+        return;
+      }
+
+      try {
+        // Attempt to connect to Phantom
+        const provider = window.solana;
+        const resp = await provider.connect();
+        const publicKey = resp.publicKey;
+        statusDiv.textContent = `Connected: ${publicKey.toBase58().slice(0, 6)}...`;
+
+        // Use QuickNode RPC endpoint
+        const connection = new solanaWeb3.Connection(
+          "https://silent-fluent-diamond.solana-mainnet.quiknode.pro/bdf6a6133f8736f5bf9097f4628841fe18b60bcc",
+          { commitment: "confirmed", disableRetryOnRateLimit: false }
+        );
+
+        // Validate token mint address format
+        try {
+          new solanaWeb3.PublicKey(TOKEN_MINT); // Will throw if invalid
+        } catch (formatError) {
+          console.error("Invalid mint address format:", formatError);
+          statusDiv.textContent = "Error: LetsBONK token mint address is malformed.";
+          return;
+        }
+
+        // Verify token mint exists
+        statusDiv.textContent += " Validating LetsBONK token mint...";
+        try {
+          const mintInfo = await connection.getParsedAccountInfo(TOKEN_MINT);
+          if (!mintInfo.value) {
+            statusDiv.textContent = "Error: LetsBONK token mint does not exist on Mainnet.";
+            console.error("Mint not found:", TOKEN_MINT.toBase58());
+            return;
+          }
+          if (mintInfo.value.data.program !== "spl-token") {
+            statusDiv.textContent = "Error: Address is not a valid SPL token mint for LetsBONK.";
+            console.error("Invalid token mint program:", TOKEN_MINT.toBase58());
+            return;
+          }
+        } catch (mintError) {
+          console.error("Mint validation error:", mintError);
+          if (mintError.message.includes("403")) {
+            statusDiv.textContent = "Error: RPC access forbidden (403). Please try again or use a different RPC.";
+          } else if (mintError.message.includes("rate limit")) {
+            statusDiv.textContent = "Error: Solana RPC rate limit exceeded. Try again later.";
+          } else if (mintError.message.includes("network")) {
+            statusDiv.textContent = "Error: Network issue with Solana RPC.";
+          } else {
+            statusDiv.textContent = "Error: Failed to validate LetsBONK token mint.";
+          }
+          return;
+        }
+
+        // Get token accounts for the specific mint
+        statusDiv.textContent += " Checking LetsBONK token balance...";
+        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+          publicKey,
+          {
+            mint: TOKEN_MINT,
+            programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+          }
+        );
+
+        let tokenBalance = 0;
+        for (const { account } of tokenAccounts.value) {
+          const info = account.data.parsed.info;
+          if (info.mint === TOKEN_MINT.toBase58()) {
+            tokenBalance = parseFloat(info.tokenAmount.uiAmount);
+            break;
+          }
+        }
+
+        statusDiv.textContent = tokenBalance > 0
+          ? `✅ You hold ${tokenBalance} LetsBONK tokens!`
+          : "❌ No LetsBONK tokens found in wallet.";
+      } catch (err) {
+        console.error("Error during connection or query:", err);
+        if (err.code === 4001) {
+          statusDiv.textContent = "Connection rejected by user.";
+        } else if (err.message.includes("403")) {
+          statusDiv.textContent = "Error: RPC access forbidden (403). Please try again or use a different RPC.";
+        } else if (err.message.includes("rate limit")) {
+          statusDiv.textContent = "Error: Solana RPC rate limit exceeded. Try again later.";
+        } else if (err.message.includes("network")) {
+          statusDiv.textContent = "Error: Network issue with Solana RPC.";
+        } else {
+          statusDiv.textContent = "Error: Failed to fetch LetsBONK token balance.";
+        }
+      }
+    }
+
+    // Handle connection on button click
+    connectBtn.addEventListener("click", checkPhantomAndConnect);
+
+    // Auto-connect if wallet is already connected
+    window.addEventListener("load", async () => {
+      if (window.solana && window.solana.isPhantom) {
+        try {
+          const provider = window.solana;
+          if (provider.isConnected) {
+            await checkPhantomAndConnect();
+          }
+        } catch (err) {
+          console.error("Auto-connect error:", err);
+        }
+      }
+    });
+  </script>
+</body>
+</html>
