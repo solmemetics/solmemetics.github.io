@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>VIP Zone</title>
+  <style>
+    body {
+      background-color: black;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 40px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎉 Welcome to the SMM VIP Zone</h1>
+  <p>Only holders of 100,000+ SMM tokens can see this page.</p>
+
+  <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
+  <script>
+    window.addEventListener("load", async () => {
+      if (!window.solana || !window.solana.isPhantom) {
+        alert("Phantom Wallet required.");
+        window.location.href = "index.html";
+        return;
+      }
+
+      try {
+        const provider = window.solana;
+        await provider.connect();
+        const publicKey = provider.publicKey;
+
+        const connection = new solanaWeb3.Connection("https://api.mainnet-beta.solana.com", "confirmed");
+        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+          publicKey,
+          {
+            mint: new solanaWeb3.PublicKey("BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups"),
+            programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+          }
+        );
+
+        let tokenBalance = 0;
+        for (const { account } of tokenAccounts.value) {
+          const info = account.data.parsed.info;
+          if (info.mint === "BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups") {
+            tokenBalance = parseFloat(info.tokenAmount.uiAmount);
+            break;
+          }
+        }
+
+        if (tokenBalance < 100000) {
+          alert("Access denied: You need at least 100,000 SMM tokens.");
+          window.location.href = "index.html";
+        }
+      } catch (err) {
+        console.error("VIP access check failed:", err);
+        alert("Could not verify SMM balance.");
+        window.location.href = "index.html";
+      }
+    });
+  </script>
+</body>
+</html>

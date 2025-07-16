@@ -106,6 +106,7 @@
     <div id="balance">Balance: 0 SMM</div>
     <button id="connect" class="connect-button">Connect</button>
   </div>
+<button id="vipAccess" class="connect-button">VIP Access</button>
   <div class="content">
     <img src="your-image.png" alt="Coming Soon" />
     <h1>Launching coins with fees.</h1>
@@ -121,6 +122,7 @@
     const ONE_PERCENT = TOTAL_SUPPLY * 0.01; // 1% of total supply
 
     const connectBtn = document.getElementById("connect");
+    let cachedBalance = 0; // To store user's balance for reuse
     const statusDiv = document.getElementById("status");
     const balanceDiv = document.getElementById("balance");
     const homeBtn = document.getElementById("home");
@@ -212,7 +214,8 @@
           }
         }
         balanceDiv.textContent = `Balance: ${displayBalance || 0} SMM`;
-
+        cachedBalance = tokenBalance;
+        
         statusDiv.textContent = getCompliment(tokenBalance);
 
         function getCompliment(balance) {
@@ -280,6 +283,22 @@
     }
 
     connectBtn.addEventListener("click", checkPhantomAndConnect);
+    const vipBtn = document.getElementById("vipAccess");
+const VIP_MINIMUM = 100000;
+
+vipBtn.addEventListener("click", () => {
+  if (!window.solana || !window.solana.isConnected) {
+    statusDiv.textContent = "Please connect your wallet first.";
+    return;
+  }
+
+  if (cachedBalance >= VIP_MINIMUM) {
+    window.location.href = "vip.html"; // Redirect to gated page
+  } else {
+    statusDiv.textContent = "Access denied: You need at least 100,000 SMM to enter VIP.";
+  }
+});
+
 
     window.addEventListener("load", async () => {
       if (window.solana && window.solana.isPhantom) {
