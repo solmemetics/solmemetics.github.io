@@ -61,9 +61,16 @@
       box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
     }
 
-    .vip-button:hover {
+    .vip-button:hover:not(:disabled) {
       background-color: #6a006a;
       box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+    }
+
+    .vip-button:disabled {
+      background-color: #4b004b; /* Darker purple when disabled */
+      color: #888;
+      cursor: not-allowed;
+      box-shadow: none;
     }
 
     .nav-button {
@@ -133,7 +140,7 @@
   <div id="controls">
     <div id="balance">Balance: 0 SMM</div>
     <button id="connect" class="connect-button">Connect</button>
-    <button id="vipAccess" class="connect-button vip-button">VIP Access</button>
+    <button id="vipAccess" class="connect-button vip-button" disabled>VIP Access</button>
   </div>
   <div class="content">
     <img src="your-image.png" alt="solmemetics-icon" />
@@ -155,7 +162,6 @@
     const homeBtn = document.getElementById("home");
     let cachedBalance = 0;
 
-    // Fallback RPC endpoints
     const RPC_ENDPOINTS = [
       "https://silent-fluent-diamond.solana-mainnet.quiknode.pro/bdf6a6133f8736f5bf9097f4628841fe18b60bcc",
       solanaWeb3.clusterApiUrl("mainnet-beta"),
@@ -170,7 +176,6 @@
       const rpc = RPC_ENDPOINTS[attempt];
       try {
         const connection = new solanaWeb3.Connection(rpc, { commitment: "confirmed", disableRetryOnRateLimit: false });
-        // Test connection
         await connection.getSlot();
         console.log(`Connected to RPC: ${rpc}`);
         return connection;
@@ -199,12 +204,12 @@
 
         const connection = await getConnection();
 
-        // Validate mint address format
         try {
           new solanaWeb3.PublicKey(TOKEN_MINT);
         } catch (formatError) {
           console.error("Invalid mint address format:", formatError);
           statusDiv.textContent = "Error: SMM token mint address is malformed.";
+          vipBtn.disabled = true;
           return;
         }
 
@@ -215,16 +220,19 @@
           if (!mintInfo.value) {
             statusDiv.textContent = "Error: SMM token mint does not exist on Mainnet.";
             console.error("Mint not found:", TOKEN_MINT.toBase58());
+            vipBtn.disabled = true;
             return;
           }
           if (mintInfo.value.data.program !== "spl-token") {
             statusDiv.textContent = "Error: Address is not a valid SPL token mint for SMM.";
             console.error("Invalid token mint program:", TOKEN_MINT.toBase58());
+            vipBtn.disabled = true;
             return;
           }
         } catch (mintError) {
           console.error("Mint validation error:", mintError);
           statusDiv.textContent = `Error: Failed to validate SMM token mint. ${mintError.message}`;
+          vipBtn.disabled = true;
           return;
         }
 
@@ -260,7 +268,13 @@
           cachedBalance = tokenBalance;
           console.log("Balance fetched:", tokenBalance);
 
-          statusDiv.textContent = getCompliment(tokenBalance);
+          // Enable VIP button if balance is sufficient
+          vipBtn.disabled = tokenBalance < VIP_MINIMUM;
+          if (tokenBalance < VIP_MINIMUM) {
+            statusDiv.textContent = `Access denied: You need at least ${VIP_MINIMUM.toLocaleString()} SMM to enter VIP. Current balance: ${tokenBalance.toLocaleString()} SMM.`;
+          } else {
+            statusDiv.textContent = getCompliment(tokenBalance);
+          }
 
           function getCompliment(balance) {
             if (balance < 1 && balance > 0) {
@@ -304,15 +318,20 @@
               balanceDiv.textContent = "Balance: 0 SMM";
               statusDiv.textContent = "";
               cachedBalance = 0;
+              sessionStorage.removeItem("smmVipVerified");
+              sessionStorage.removeItem("smmPublicKey");
+              vipBtn.disabled = true; // Disable VIP button on disconnect
               connectBtn.onclick = checkPhantomAndConnect;
             } catch (err) {
               console.error("Disconnect error:", err);
               statusDiv.textContent = "Error disconnecting from Phantom wallet.";
+              vipBtn.disabled = true;
             }
           };
         } catch (err) {
           console.error("Balance check error:", err);
           statusDiv.textContent = `Error: Failed to fetch SMM token balance. ${err.message}`;
+          vipBtn.disabled = true;
         }
       } catch (err) {
         console.error("Connection error:", err);
@@ -321,6 +340,7 @@
         } else {
           statusDiv.textContent = `Error: Failed to connect to Phantom wallet. ${err.message}`;
         }
+        vipBtn.disabled = true;
       }
     }
 
@@ -337,6 +357,8 @@
         return;
       }
       if (cachedBalance >= VIP_MINIMUM) {
+        sessionStorage.setItem("smmVipVerified", "true");
+        sessionStorage.setItem("smmPublicKey", window.solana.publicKey.toBase58());
         window.location.href = "vip.html";
       } else {
         statusDiv.textContent = `Access denied: You need at least ${VIP_MINIMUM.toLocaleString()} SMM to enter VIP. Current balance: ${cachedBalance.toLocaleString()} SMM.`;
@@ -349,6 +371,7 @@
           await checkPhantomAndConnect();
         } catch (err) {
           console.error("Auto-connect error:", err);
+          vipBtn.disabled = true;
         }
       }
     });
