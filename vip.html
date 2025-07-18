@@ -105,7 +105,7 @@
           // Verify public key matches to prevent wallet switching
           if (isVerified && storedPublicKey === publicKey.toBase58()) {
             console.log("VIP access verified via sessionStorage");
-            statusDiv.textContent = "VIP access granted!";
+            statusDiv.textContent = "VIP access granted, features arriving sooner than you know!";
             return true;
           }
         } else {
@@ -154,7 +154,7 @@
         // Store verification and public key
         sessionStorage.setItem("smmVipVerified", "true");
         sessionStorage.setItem("smmPublicKey", publicKey.toBase58());
-        statusDiv.textContent = "VIP access granted!";
+        statusDiv.textContent = "VIP access granted, features arriving sooner than you know!";
         return true;
       } catch (err) {
         console.error("VIP access check failed:", err);
