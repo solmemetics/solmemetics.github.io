@@ -11,6 +11,12 @@
       font-family: Arial, sans-serif;
       text-align: center;
       padding: 40px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
     }
     h1 {
       font-size: 32px;
@@ -23,7 +29,7 @@
     .retry-button {
       padding: 12px 24px;
       font-size: 16px;
-      background: #8b008b;
+      background: #8b008b; /* Matches VIP button style */
       color: white;
       border: none;
       border-radius: 9999px;
@@ -33,6 +39,11 @@
     .retry-button:hover {
       background-color: #6a006a;
       box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+    }
+    #status {
+      margin-top: 20px;
+      font-size: 16px;
+      color: #ccc;
     }
   </style>
 </head>
@@ -80,32 +91,41 @@
         return false;
       }
 
-      // Check if balance was verified via sessionStorage
-      const isVerified = sessionStorage.getItem("smmVipVerified") === "true";
-      if (isVerified && window.solana.isConnected) {
-        console.log("VIP access verified via sessionStorage");
-        statusDiv.textContent = "VIP access granted!";
-        return true;
-      }
-
       try {
         const provider = window.solana;
         let publicKey;
 
+        // Check if wallet is connected and matches sessionStorage public key
+        const storedPublicKey = sessionStorage.getItem("smmPublicKey");
+        const isVerified = sessionStorage.getItem("smmVipVerified") === "true";
+
         if (window.solana.isConnected) {
           publicKey = provider.publicKey;
           console.log("Using existing wallet connection:", publicKey.toBase58());
+          // Verify public key matches to prevent wallet switching
+          if (isVerified && storedPublicKey === publicKey.toBase58()) {
+            console.log("VIP access verified via sessionStorage");
+            statusDiv.textContent = "VIP access granted!";
+            return true;
+          }
         } else {
-          const resp = await provider.connect({ onlyIfTrusted: true }); // Silent connect if trusted
-          publicKey = resp.publicKey;
-          console.log("New wallet connection:", publicKey.toBase58());
+          // Attempt silent connection
+          try {
+            const resp = await provider.connect({ onlyIfTrusted: true });
+            publicKey = resp.publicKey;
+            console.log("Silent wallet connection:", publicKey.toBase58());
+          } catch (connectErr) {
+            console.error("Silent connection failed:", connectErr);
+            statusDiv.textContent = "Please connect your Phantom wallet.";
+            retryBtn.style.display = "block";
+            return false;
+          }
         }
 
         statusDiv.textContent = `Connected: ${publicKey.toBase58().slice(0, 6)}...`;
-
-        const connection = await getConnection();
         statusDiv.textContent += " Checking SMM token balance...";
 
+        const connection = await getConnection();
         const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
           publicKey,
           {
@@ -126,11 +146,14 @@
         if (tokenBalance < VIP_MINIMUM) {
           statusDiv.textContent = `Access denied: You need at least ${VIP_MINIMUM.toLocaleString()} SMM tokens. Current balance: ${tokenBalance.toLocaleString()} SMM.`;
           retryBtn.style.display = "block";
+          sessionStorage.removeItem("smmVipVerified"); // Clear invalid verification
+          sessionStorage.removeItem("smmPublicKey");
           return false;
         }
 
-        // Store verification in sessionStorage
+        // Store verification and public key
         sessionStorage.setItem("smmVipVerified", "true");
+        sessionStorage.setItem("smmPublicKey", publicKey.toBase58());
         statusDiv.textContent = "VIP access granted!";
         return true;
       } catch (err) {
@@ -150,7 +173,8 @@
     window.addEventListener("load", async () => {
       const hasAccess = await checkVipAccess();
       if (!hasAccess && !retryBtn.style.display) {
-        setTimeout(() => window.location.href = "index.html", 3000); // Redirect after 3s if no retry
+        statusDiv.textContent = statusDiv.textContent || "Redirecting to main page...";
+        setTimeout(() => window.location.href = "index.html", 3000); // Redirect after 3s
       }
     });
   </script>
