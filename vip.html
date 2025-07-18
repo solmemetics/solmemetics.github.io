@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VIP Zone</title>
   <style>
     body {
@@ -12,31 +12,104 @@
       text-align: center;
       padding: 40px;
     }
+    h1 {
+      font-size: 32px;
+      margin-bottom: 20px;
+    }
+    p {
+      font-size: 18px;
+      margin-bottom: 20px;
+    }
+    .retry-button {
+      padding: 12px 24px;
+      font-size: 16px;
+      background: #8b008b;
+      color: white;
+      border: none;
+      border-radius: 9999px;
+      cursor: pointer;
+      transition: background-color 0.3s, box-shadow 0.3s;
+    }
+    .retry-button:hover {
+      background-color: #6a006a;
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+    }
   </style>
 </head>
 <body>
   <h1>🎉 Welcome to the SMM VIP Zone</h1>
   <p>Only holders of 100,000+ SMM tokens can see this page.</p>
+  <div id="status"></div>
+  <button id="retry" class="retry-button" style="display: none;">Retry Connection</button>
 
   <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
   <script>
-    window.addEventListener("load", async () => {
+    const TOKEN_MINT = new solanaWeb3.PublicKey("BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups");
+    const VIP_MINIMUM = 100000;
+    const statusDiv = document.getElementById("status");
+    const retryBtn = document.getElementById("retry");
+
+    // Fallback RPC endpoints
+    const RPC_ENDPOINTS = [
+      "https://silent-fluent-diamond.solana-mainnet.quiknode.pro/bdf6a6133f8736f5bf9097f4628841fe18b60bcc",
+      solanaWeb3.clusterApiUrl("mainnet-beta"),
+      "https://api.mainnet-beta.solana.com"
+    ];
+
+    async function getConnection(attempt = 0) {
+      const rpc = RPC_ENDPOINTS[attempt];
+      try {
+        const connection = new solanaWeb3.Connection(rpc, { commitment: "confirmed", disableRetryOnRateLimit: false });
+        await connection.getSlot();
+        console.log(`Connected to RPC: ${rpc}`);
+        return connection;
+      } catch (err) {
+        console.error(`RPC ${rpc} failed:`, err);
+        if (attempt < RPC_ENDPOINTS.length - 1) {
+          return getConnection(attempt + 1);
+        }
+        throw new Error("All RPC endpoints failed.");
+      }
+    }
+
+    async function checkVipAccess() {
       if (!window.solana || !window.solana.isPhantom) {
-        alert("Phantom Wallet required.");
-        window.location.href = "index.html";
-        return;
+        statusDiv.textContent = "Phantom Wallet required. Please install Phantom.";
+        retryBtn.style.display = "none";
+        window.open("https://phantom.app/", "_blank");
+        return false;
+      }
+
+      // Check if balance was verified via sessionStorage
+      const isVerified = sessionStorage.getItem("smmVipVerified") === "true";
+      if (isVerified && window.solana.isConnected) {
+        console.log("VIP access verified via sessionStorage");
+        statusDiv.textContent = "VIP access granted!";
+        return true;
       }
 
       try {
         const provider = window.solana;
-        await provider.connect();
-        const publicKey = provider.publicKey;
+        let publicKey;
 
-        const connection = new solanaWeb3.Connection("https://api.mainnet-beta.solana.com", "confirmed");
+        if (window.solana.isConnected) {
+          publicKey = provider.publicKey;
+          console.log("Using existing wallet connection:", publicKey.toBase58());
+        } else {
+          const resp = await provider.connect({ onlyIfTrusted: true }); // Silent connect if trusted
+          publicKey = resp.publicKey;
+          console.log("New wallet connection:", publicKey.toBase58());
+        }
+
+        statusDiv.textContent = `Connected: ${publicKey.toBase58().slice(0, 6)}...`;
+
+        const connection = await getConnection();
+        statusDiv.textContent += " Checking SMM token balance...";
+
         const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
           publicKey,
           {
-            mint: new solanaWeb3.PublicKey("BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups"),
+            mint: TOKEN_MINT,
             programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
           }
         );
@@ -44,20 +117,40 @@
         let tokenBalance = 0;
         for (const { account } of tokenAccounts.value) {
           const info = account.data.parsed.info;
-          if (info.mint === "BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups") {
+          if (info.mint === TOKEN_MINT.toBase58()) {
             tokenBalance = parseFloat(info.tokenAmount.uiAmount);
             break;
           }
         }
 
-        if (tokenBalance < 100000) {
-          alert("Access denied: You need at least 100,000 SMM tokens.");
-          window.location.href = "index.html";
+        if (tokenBalance < VIP_MINIMUM) {
+          statusDiv.textContent = `Access denied: You need at least ${VIP_MINIMUM.toLocaleString()} SMM tokens. Current balance: ${tokenBalance.toLocaleString()} SMM.`;
+          retryBtn.style.display = "block";
+          return false;
         }
+
+        // Store verification in sessionStorage
+        sessionStorage.setItem("smmVipVerified", "true");
+        statusDiv.textContent = "VIP access granted!";
+        return true;
       } catch (err) {
         console.error("VIP access check failed:", err);
-        alert("Could not verify SMM balance.");
-        window.location.href = "index.html";
+        statusDiv.textContent = `Could not verify SMM balance: ${err.message}`;
+        retryBtn.style.display = "block";
+        return false;
+      }
+    }
+
+    retryBtn.addEventListener("click", async () => {
+      retryBtn.style.display = "none";
+      statusDiv.textContent = "";
+      await checkVipAccess();
+    });
+
+    window.addEventListener("load", async () => {
+      const hasAccess = await checkVipAccess();
+      if (!hasAccess && !retryBtn.style.display) {
+        setTimeout(() => window.location.href = "index.html", 3000); // Redirect after 3s if no retry
       }
     });
   </script>
