@@ -11,20 +11,20 @@
       font-family: Arial, sans-serif;
       text-align: center;
       position: relative;
-      min-height: 100vh; /* Ensure body takes full viewport height */
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
-      justify-content: center; /* Center content vertically */
-      align-items: center; /* Center content horizontally */
+      justify-content: center;
+      align-items: center;
       margin: 0;
-      padding: 20px; /* Reduced padding to avoid excessive spacing */
+      padding: 20px;
     }
 
     .content {
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin-top: -100px; /* Adjust to shift content slightly higher for balance */
+      margin-top: -80px; /* Adjusted for better balance */
     }
 
     img {
@@ -38,7 +38,6 @@
       margin-bottom: 40px;
     }
 
-    /* Style for the Connect button */
     .connect-button {
       padding: 12px 24px;
       font-size: 16px;
@@ -47,14 +46,26 @@
       border: none;
       border-radius: 9999px;
       cursor: pointer;
-      transition: background-color 0.3s;
+      transition: background-color 0.3s, box-shadow 0.3s;
     }
 
     .connect-button:hover {
       background-color: #e0e0e0;
     }
 
-    /* Style for Home buttons */
+    .vip-button {
+      background-color: #8b008b; /* Purple for VIP */
+      color: white;
+      font-weight: bold;
+      margin-left: 10px;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    }
+
+    .vip-button:hover {
+      background-color: #6a006a;
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+    }
+
     .nav-button {
       font-size: 16px;
       color: white;
@@ -66,7 +77,7 @@
     }
 
     .nav-button:hover {
-      color: #cccccc; /* Subtle greyish-white on hover */
+      color: #cccccc;
     }
 
     #status {
@@ -82,6 +93,7 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      z-index: 10; /* Ensure controls are above other elements */
     }
 
     #nav-controls {
@@ -90,11 +102,27 @@
       left: 20px;
       display: flex;
       align-items: center;
-      gap: 20px; /* Increased gap for better spacing with text buttons */
+      gap: 20px;
     }
 
     #balance {
       margin-right: 10px;
+    }
+
+    @media (max-width: 600px) {
+      #controls {
+        flex-direction: column;
+        align-items: flex-end;
+        top: 10px;
+        right: 10px;
+      }
+      .connect-button, .vip-button {
+        width: 100%;
+        max-width: 200px;
+      }
+      .content {
+        margin-top: 0; /* Adjust for mobile */
+      }
     }
   </style>
 </head>
@@ -105,8 +133,8 @@
   <div id="controls">
     <div id="balance">Balance: 0 SMM</div>
     <button id="connect" class="connect-button">Connect</button>
+    <button id="vipAccess" class="connect-button vip-button">VIP Access</button>
   </div>
-<button id="vipAccess" class="connect-button">VIP Access</button>
   <div class="content">
     <img src="your-image.png" alt="solmemetics-icon" />
     <h1>Launching coins with fees..</h1>
@@ -114,22 +142,21 @@
   </div>
 
   <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
-
   <script>
-    // SMM token mint address
     const TOKEN_MINT = new solanaWeb3.PublicKey("BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups");
     const TOTAL_SUPPLY = 100000000; // 100 million tokens
     const ONE_PERCENT = TOTAL_SUPPLY * 0.01; // 1% of total supply
+    const VIP_MINIMUM = 100000;
 
     const connectBtn = document.getElementById("connect");
-    let cachedBalance = 0; // To store user's balance for reuse
+    const vipBtn = document.getElementById("vipAccess");
     const statusDiv = document.getElementById("status");
     const balanceDiv = document.getElementById("balance");
     const homeBtn = document.getElementById("home");
+    let cachedBalance = 0;
 
-    // Navigation button functionality
     homeBtn.addEventListener("click", () => {
-      window.location.href = "https://solmemetics.com"; // Assuming this is the home page
+      window.location.href = "https://solmemetics.com";
     });
 
     async function checkPhantomAndConnect() {
@@ -146,7 +173,7 @@
         statusDiv.textContent = `Connected: ${publicKey.toBase58().slice(0, 6)}...`;
 
         const connection = new solanaWeb3.Connection(
-          "https://silent-fluent-diamond.solana-mainnet.quiknode.pro/bdf6a6133f8736f5bf9097f4628841fe18b60bcc",
+          solanaWeb3.clusterApiUrl("mainnet-beta"), // Fallback to default RPC
           { commitment: "confirmed", disableRetryOnRateLimit: false }
         );
 
@@ -173,139 +200,129 @@
           }
         } catch (mintError) {
           console.error("Mint validation error:", mintError);
-          if (mintError.message.includes("403")) {
-            statusDiv.textContent = "Error: RPC access forbidden (403). Please try again or use a different RPC.";
-          } else if (mintError.message.includes("rate limit")) {
-            statusDiv.textContent = "Error: Solana RPC rate limit exceeded. Try again later.";
-          } else if (mintError.message.includes("network")) {
-            statusDiv.textContent = "Error: Network issue with Solana RPC.";
-          } else {
-            statusDiv.textContent = "Error: Failed to validate SMM token mint.";
-          }
+          statusDiv.textContent = "Error: Failed to validate SMM token mint.";
           return;
         }
 
         statusDiv.textContent += " Checking SMM token balance...";
-        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-          publicKey,
-          {
-            mint: TOKEN_MINT,
-            programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
-          }
-        );
+        try {
+          const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+            publicKey,
+            {
+              mint: TOKEN_MINT,
+              programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+            }
+          );
 
-        let tokenBalance = 0;
-        for (const { account } of tokenAccounts.value) {
-          const info = account.data.parsed.info;
-          if (info.mint === TOKEN_MINT.toBase58()) {
-            tokenBalance = parseFloat(info.tokenAmount.uiAmount);
-            break;
+          let tokenBalance = 0;
+          for (const { account } of tokenAccounts.value) {
+            const info = account.data.parsed.info;
+            if (info.mint === TOKEN_MINT.toBase58()) {
+              tokenBalance = parseFloat(info.tokenAmount.uiAmount);
+              break;
+            }
           }
+
+          const balanceString = tokenBalance.toString();
+          const [integerPart, decimalPart] = balanceString.split('.');
+          let displayBalance = integerPart;
+          if (decimalPart) {
+            const trimmedDecimals = decimalPart.replace(/0+$/, '').slice(0, 9);
+            if (trimmedDecimals) {
+              displayBalance += '.' + trimmedDecimals;
+            }
+          }
+          balanceDiv.textContent = `Balance: ${displayBalance || 0} SMM`;
+          cachedBalance = tokenBalance;
+
+          statusDiv.textContent = getCompliment(tokenBalance);
+
+          function getCompliment(balance) {
+            if (balance < 1 && balance > 0) {
+              return "That's not even one token, are you sure you have the right wallet?";
+            } else if (balance === 1) {
+              return "Hmm, just 1 SMM? Curious, why so few?";
+            } else if (balance > 1 && balance <= 10) {
+              const compliments = [
+                "Nice start with your SMM! Maybe take it slow in crypto?",
+                "A few SMM - great taste, but crypto might not be your full-time gig yet!",
+                "You’ve got some SMM! Perhaps crypto’s a gentle hobby for now?"
+              ];
+              return compliments[Math.floor(Math.random() * compliments.length)];
+            } else if (balance > 10 && balance <= 100) {
+              const compliments = [
+                "Wow, over 10 SMM! You’re doing well - maybe crypto isn’t your calling, but it’s fun!",
+                "More than 10 SMM? Impressive, though you might enjoy it more outside crypto!",
+                "Over 10 SMM - nice stash! Crypto might be a sideline for you, no pressure!"
+              ];
+              return compliments[Math.floor(Math.random() * compliments.length)];
+            } else if (balance > 100 && balance <= ONE_PERCENT) {
+              const compliments = [
+                "Over 100 SMM? That’s cool! Have you thought about grabbing more?",
+                "Nice, more than 100 SMM! Ever considered adding to your stack?",
+                "100+ SMM - awesome! Maybe pick up a few more when you can?"
+              ];
+              return compliments[Math.floor(Math.random() * compliments.length)];
+            } else if (balance > ONE_PERCENT) {
+              return "With over 1% of SMM (1 million+), you’re a powerhouse! You could shape the project’s direction - exciting times ahead!";
+            } else if (balance === 0) {
+              return "No tokens found in this wallet, this definitely can't be the right wallet";
+            }
+            return "Error determining SMM balance.";
+          }
+
+          // Change button to disconnect
+          connectBtn.textContent = "Disconnect";
+          connectBtn.onclick = async () => {
+            try {
+              await provider.disconnect();
+              connectBtn.textContent = "Connect";
+              balanceDiv.textContent = "Balance: 0 SMM";
+              statusDiv.textContent = "";
+              cachedBalance = 0;
+              connectBtn.onclick = checkPhantomAndConnect;
+            } catch (err) {
+              console.error("Disconnect error:", err);
+              statusDiv.textContent = "Error disconnecting from Phantom wallet.";
+            }
+          };
+        } catch (err) {
+          console.error("Balance check error:", err);
+          statusDiv.textContent = "Error: Failed to fetch SMM token balance.";
         }
-
-        // Display balance with up to 9 decimals, trimming trailing zeros
-        const balanceString = tokenBalance.toString();
-        const [integerPart, decimalPart] = balanceString.split('.');
-        let displayBalance = integerPart;
-        if (decimalPart) {
-          const trimmedDecimals = decimalPart.replace(/0+$/, '').slice(0, 9);
-          if (trimmedDecimals) {
-            displayBalance += '.' + trimmedDecimals;
-          }
-        }
-        balanceDiv.textContent = `Balance: ${displayBalance || 0} SMM`;
-        cachedBalance = tokenBalance;
-        
-        statusDiv.textContent = getCompliment(tokenBalance);
-
-        function getCompliment(balance) {
-          if (balance < 1 && balance > 0) {
-            return "Thats not even one token, are you sure you have the right wallet?";
-          } else if (balance === 1) {
-            return "Hmm, just 1 SMM? Curious, why so few?";
-          } else if (balance > 1 && balance <= 10) {
-            const compliments = [
-              "Nice start with your SMM! Maybe take it slow in crypto?",
-              "A few SMM - great taste, but crypto might not be your full-time gig yet!",
-              "You’ve got some SMM! Perhaps crypto’s a gentle hobby for now?"
-            ];
-            return compliments[Math.floor(Math.random() * compliments.length)];
-          } else if (balance > 10 && balance <= 100) {
-            const compliments = [
-              "Wow, over 10 SMM! You’re doing well - maybe crypto isn’t your calling, but it’s fun!",
-              "More than 10 SMM? Impressive, though you might enjoy it more outside crypto!",
-              "Over 10 SMM - nice stash! Crypto might be a sideline for you, no pressure!"
-            ];
-            return compliments[Math.floor(Math.random() * compliments.length)];
-          } else if (balance > 100 && balance <= ONE_PERCENT) {
-            const compliments = [
-              "Over 100 SMM? That’s cool! Have you thought about grabbing more?",
-              "Nice, more than 100 SMM! Ever considered adding to your stack?",
-              "100+ SMM - awesome! Maybe pick up a few more when you can?"
-            ];
-            return compliments[Math.floor(Math.random() * compliments.length)];
-          } else if (balance > ONE_PERCENT) {
-            return "With over 1% of SMM (1 million+), you’re a powerhouse! You could shape the project’s direction - exciting times ahead!";
-          } else if (balance === 0) {
-            return "No tokens found in this wallet, this definitely can't be the right wallet";
-          }
-          return "Error determining SMM balance.";
-        }
-
-        // Change button to disconnect and enable disconnect functionality
-        connectBtn.textContent = "Disconnect";
-        connectBtn.onclick = async () => {
-          try {
-            await provider.disconnect();
-            connectBtn.textContent = "Connect";
-            balanceDiv.textContent = "Balance: 0 SMM";
-            statusDiv.textContent = "";
-            connectBtn.onclick = checkPhantomAndConnect;
-          } catch (err) {
-            console.error("Disconnect error:", err);
-            statusDiv.textContent = "Error disconnecting from Phantom wallet.";
-          }
-        };
       } catch (err) {
-        console.error("Error during connection or query:", err);
+        console.error("Connection error:", err);
         if (err.code === 4001) {
           statusDiv.textContent = "Connection rejected by user.";
-        } else if (err.message.includes("403")) {
-          statusDiv.textContent = "Error: RPC access forbidden (403). Please try again or use a different RPC.";
-        } else if (err.message.includes("rate limit")) {
-          statusDiv.textContent = "Error: Solana RPC rate limit exceeded. Try again later.";
-        } else if (err.message.includes("network")) {
-          statusDiv.textContent = "Error: Network issue with Solana RPC.";
         } else {
-          statusDiv.textContent = "Error: Failed to fetch SMM token balance.";
+          statusDiv.textContent = "Error: Failed to connect to Phantom wallet.";
         }
       }
     }
 
     connectBtn.addEventListener("click", checkPhantomAndConnect);
-    const vipBtn = document.getElementById("vipAccess");
-const VIP_MINIMUM = 100000;
 
-vipBtn.addEventListener("click", () => {
-  if (!window.solana || !window.solana.isConnected) {
-    statusDiv.textContent = "Please connect your wallet first.";
-    return;
-  }
- 
-  if (cachedBalance >= VIP_MINIMUM) {
-    window.location.href = "vip.html"; // Redirect to gated page
-  } else {
-    statusDiv.textContent = "Access denied: You need at least 100,000 SMM to enter VIP.";
-  }
-});
-  
+    vipBtn.addEventListener("click", () => {
+      console.log("VIP button clicked, isConnected:", window.solana?.isConnected, "Balance:", cachedBalance);
+      if (!window.solana || !window.solana.isConnected) {
+        statusDiv.textContent = "Please connect your Phantom wallet first.";
+        return;
+      }
+      if (cachedBalance === undefined || cachedBalance === null) {
+        statusDiv.textContent = "Error: Balance not loaded. Please try reconnecting.";
+        return;
+      }
+      if (cachedBalance >= VIP_MINIMUM) {
+        window.location.href = "vip.html";
+      } else {
+        statusDiv.textContent = `Access denied: You need at least ${VIP_MINIMUM.toLocaleString()} SMM to enter VIP. Current balance: ${cachedBalance.toLocaleString()} SMM.`;
+      }
+    });
+
     window.addEventListener("load", async () => {
-      if (window.solana && window.solana.isPhantom) {
+      if (window.solana && window.solana.isPhantom && window.solana.isConnected) {
         try {
-          const provider = window.solana;
-          if (provider.isConnected) {
-            await checkPhantomAndConnect();
-          }
+          await checkPhantomAndConnect();
         } catch (err) {
           console.error("Auto-connect error:", err);
         }
