@@ -203,7 +203,7 @@
 
     function connectWebSocket(rank, userAddress) {
       // Replace with your Render WebSocket URL after deployment
-      ws = new WebSocket("wss://your-render-app.onrender.com");
+      ws = new WebSocket("wss://smm-chat-server.onrender.com");
       
       ws.onopen = () => {
         statusDiv.textContent = "Connected to chat server!";
