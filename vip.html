@@ -12,11 +12,13 @@
       margin: 20px auto;
       padding: 20px;
       background-color: #f0f0f0;
+      text-align: center;
     }
     .tab-buttons {
       display: flex;
       gap: 10px;
       margin-bottom: 20px;
+      justify-content: center;
     }
     .tab-button {
       padding: 10px 20px;
@@ -69,6 +71,10 @@
     .rank-gold { color: #ffd700; }
     .rank-platinum { color: #e5e4e2; }
     .rank-rhodium { color: #b9f2ff; }
+    .loading {
+      font-style: italic;
+      color: #666;
+    }
   </style>
 </head>
 <body>
@@ -78,16 +84,16 @@
     <button class="tab-button" data-tab="chat">Chat</button>
   </div>
   <div id="profile" class="tab-content active">
-    <p><strong>Balance:</strong> <span id="vip-balance">Checking...</span> SMM</p>
-    <p><strong>Rank:</strong> <span id="vip-rank">Checking...</span></p>
+    <p><strong>Balance:</strong> <span id="vip-balance" class="loading">Checking...</span> SMM</p>
+    <p><strong>Rank:</strong> <span id="vip-rank" class="loading">Checking...</span></p>
   </div>
   <div id="chat" class="tab-content">
     <div id="chat-messages"></div>
-    <input type="text" id="chat-input" placeholder="Type your message...">
-    <button id="send-chat">Send</button>
-    <button id="clear-chat">Clear Chat</button>
+    <input type="text" id="chat-input" placeholder="Type your message..." disabled>
+    <button id="send-chat" disabled>Send</button>
+    <button id="clear-chat" disabled>Clear Chat</button>
   </div>
-  <div id="status">Checking VIP access...</div>
+  <div id="status" class="loading">Checking VIP access...</div>
   <button id="retry">Retry Connection</button>
 
   <script>
@@ -96,7 +102,11 @@
     const statusDiv = document.getElementById("status");
     const retryBtn = document.getElementById("retry");
     const chatMessages = document.getElementById("chat-messages");
+    const chatInput = document.getElementById("chat-input");
+    const sendBtn = document.getElementById("send-chat");
+    const clearBtn = document.getElementById("clear-chat");
     let ws;
+
     const RPC_ENDPOINTS = [
       "https://silent-fluent-diamond.solana-mainnet.quiknode.pro/bdf6a6133f8736f5bf9097f4628841fe18b60bcc",
       solanaWeb3.clusterApiUrl("mainnet-beta"),
@@ -115,9 +125,9 @@
         if (attempt < RPC_ENDPOINTS.length - 1) {
           return getConnection(attempt + 1);
         }
-        statusDiv.textContent = "All RPC endpoints failed. Retrying...";
-        setTimeout(() => checkVipAccess(), 5000); // Retry every 5 seconds
-        return null;
+        statusDiv.textContent = "All RPC endpoints failed. Retrying in 5 seconds...";
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        return getConnection(0); // Restart fallback loop
       }
     }
 
@@ -134,19 +144,21 @@
             break;
           }
         }
+        document.getElementById("vip-balance").classList.remove("loading");
         document.getElementById("vip-balance").textContent = tokenBalance.toLocaleString();
         const rank = tokenBalance >= 1000000 ? "Rhodium" :
                      tokenBalance >= 750000 ? "Platinum" :
                      tokenBalance >= 500000 ? "Gold" :
                      tokenBalance >= 250000 ? "Silver" :
                      tokenBalance >= 100000 ? "Bronze" : "No Rank";
+        document.getElementById("vip-rank").classList.remove("loading");
         document.getElementById("vip-rank").textContent = rank;
         return { balance: tokenBalance, rank };
       } catch (err) {
         console.error("Failed to update VIP info:", err);
-        statusDiv.textContent = `Error fetching balance: ${err.message}. Retrying...`;
-        setTimeout(() => checkVipAccess(), 5000); // Retry on error
-        return { balance: 0, rank: "No Rank" };
+        statusDiv.textContent = `Error fetching balance: ${err.message}. Retrying in 5 seconds...`;
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        return updateVipInfo(publicKey, await getConnection()); // Retry with new connection
       }
     }
 
@@ -158,16 +170,18 @@
         return Buffer.from(signature.signature).toString("base64");
       } catch (err) {
         console.error("Signature failed:", err);
-        statusDiv.textContent = "Error signing message. Please try again.";
+        statusDiv.textContent = "Error signing message. Please try again or check Phantom wallet.";
         return null;
       }
     }
 
     function connectWebSocket(rank, userAddress, publicKey) {
-      ws = new WebSocket("wss://smm-chat-server.onrender.com"); // Replace with your Render URL
+      ws = new WebSocket("wss://your-render-url.onrender.com"); // Replace with your actual Render URL
       ws.onopen = () => {
         statusDiv.textContent = "Connected to chat server!";
-        console.log("WebSocket connected");
+        chatInput.disabled = false;
+        sendBtn.disabled = false;
+        clearBtn.disabled = false;
       };
       ws.onmessage = (event) => {
         const msg = JSON.parse(event.data);
@@ -177,19 +191,25 @@
         chatMessages.scrollTop = chatMessages.scrollHeight;
       };
       ws.onclose = () => {
-        statusDiv.textContent = "Chat server disconnected. Retrying...";
+        statusDiv.textContent = "Chat server disconnected. Retrying in 5 seconds...";
+        chatInput.disabled = true;
+        sendBtn.disabled = true;
+        clearBtn.disabled = true;
         setTimeout(() => connectWebSocket(rank, userAddress, publicKey), 5000);
       };
       ws.onerror = (err) => {
         console.error("WebSocket error:", err);
-        statusDiv.textContent = "Chat server error. Retrying...";
+        statusDiv.textContent = "Chat server error. Retrying in 5 seconds...";
       };
     }
 
     document.getElementById("send-chat").addEventListener("click", async () => {
       const input = document.getElementById("chat-input");
       const text = input.value.trim();
-      if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+      if (!text || !ws || ws.readyState !== WebSocket.OPEN) {
+        statusDiv.textContent = "Cannot send: Not connected to chat server.";
+        return;
+      }
       const user = window.solana?.publicKey?.toBase58().slice(0, 6) || "Anon";
       const rank = document.getElementById("vip-rank").textContent;
       const publicKey = window.solana?.publicKey?.toBase58();
@@ -215,11 +235,12 @@
 
     async function checkVipAccess() {
       if (!window.solana || !window.solana.isPhantom) {
-        statusDiv.textContent = "Phantom Wallet required. Please install Phantom.";
-        retryBtn.style.display = "none";
+        statusDiv.textContent = "Phantom Wallet required. Please install it here.";
+        retryBtn.style.display = "block";
         window.open("https://phantom.app/", "_blank");
         return false;
       }
+      statusDiv.textContent = "Connecting to wallet...";
       try {
         const provider = window.solana;
         let publicKey;
@@ -228,16 +249,6 @@
         if (window.solana.isConnected) {
           publicKey = provider.publicKey;
           console.log("Using existing wallet connection:", publicKey.toBase58());
-          if (isVerified && storedPublicKey === publicKey.toBase58()) {
-            console.log("VIP access verified via sessionStorage");
-            statusDiv.textContent = "VIP access granted!";
-            const connection = await getConnection();
-            if (connection) {
-              const { rank } = await updateVipInfo(publicKey, connection);
-              connectWebSocket(rank, publicKey.toBase58().slice(0, 6), publicKey.toBase58());
-            }
-            return true;
-          }
         } else {
           try {
             const resp = await provider.connect({ onlyIfTrusted: true });
@@ -245,15 +256,27 @@
             console.log("Silent wallet connection:", publicKey.toBase58());
           } catch (connectErr) {
             console.error("Silent connection failed:", connectErr);
-            statusDiv.textContent = "Please connect your Phantom wallet.";
+            statusDiv.textContent = "Please connect your Phantom wallet manually.";
             retryBtn.style.display = "block";
             return false;
           }
         }
-        statusDiv.textContent = `Connected: ${publicKey.toBase58().slice(0, 6)}...`;
-        statusDiv.textContent += " Checking SMM token balance...";
+        if (isVerified && storedPublicKey === publicKey.toBase58()) {
+          console.log("VIP access verified via sessionStorage");
+          statusDiv.textContent = "VIP access granted!";
+          const connection = await getConnection();
+          if (connection) {
+            const { rank } = await updateVipInfo(publicKey, connection);
+            connectWebSocket(rank, publicKey.toBase58().slice(0, 6), publicKey.toBase58());
+          }
+          return true;
+        }
+        statusDiv.textContent = `Connected: ${publicKey.toBase58().slice(0, 6)}... Checking SMM balance...`;
         const connection = await getConnection();
-        if (!connection) return false;
+        if (!connection) {
+          retryBtn.style.display = "block";
+          return false;
+        }
         const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
           publicKey,
           { mint: TOKEN_MINT, programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") }
@@ -267,7 +290,7 @@
           }
         }
         if (tokenBalance < VIP_MINIMUM) {
-          statusDiv.textContent = `Access denied: You need at least ${VIP_MINIMUM.toLocaleString()} SMM tokens. Current balance: ${tokenBalance.toLocaleString()} SMM.`;
+          statusDiv.textContent = `Access denied: Need at least ${VIP_MINIMUM.toLocaleString()} SMM. Current: ${tokenBalance.toLocaleString()} SMM.`;
           retryBtn.style.display = "block";
           sessionStorage.removeItem("smmVipVerified");
           sessionStorage.removeItem("smmPublicKey");
@@ -281,10 +304,10 @@
         return true;
       } catch (err) {
         console.error("VIP access check failed:", err);
-        statusDiv.textContent = `Could not verify SMM balance: ${err.message}. Retrying...`;
+        statusDiv.textContent = `Error verifying balance: ${err.message}. Retrying in 5 seconds...`;
         retryBtn.style.display = "block";
-        setTimeout(() => checkVipAccess(), 5000); // Retry every 5 seconds
-        return false;
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        return checkVipAccess(); // Recursive retry
       }
     }
 
@@ -299,16 +322,14 @@
 
     retryBtn.addEventListener("click", async () => {
       retryBtn.style.display = "none";
-      statusDiv.textContent = "";
+      statusDiv.classList.add("loading");
+      statusDiv.textContent = "Checking VIP access...";
       await checkVipAccess();
+      statusDiv.classList.remove("loading");
     });
 
     window.addEventListener("load", async () => {
-      const hasAccess = await checkVipAccess();
-      if (!hasAccess && !retryBtn.style.display) {
-        statusDiv.textContent = statusDiv.textContent || "Redirecting to main page...";
-        setTimeout(() => window.location.href = "index.html", 3000);
-      }
+      await checkVipAccess();
     });
   </script>
 </body>
