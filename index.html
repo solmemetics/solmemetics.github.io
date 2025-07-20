@@ -1,150 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Solmemetics</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solmemetics Main</title>
+  <script src="https://unpkg.com/@solana/web3.js@1.95.3/dist/index.iife.min.js"></script>
   <style>
     body {
-      background-color: black;
-      color: white;
       font-family: Arial, sans-serif;
-      text-align: center;
-      position: relative;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      margin: 0;
+      max-width: 600px;
+      margin: 20px auto;
       padding: 20px;
+      text-align: center;
+      background-color: #f0f0f0;
     }
-    .content {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin-top: -80px;
-    }
-    img {
-      max-width: 300px;
-      height: auto;
-      margin-bottom: 20px;
-    }
-    h1 {
-      font-size: 24px;
-      margin-bottom: 40px;
-    }
-    .connect-button {
-      padding: 12px 24px;
-      font-size: 16px;
-      background: white;
-      color: black;
-      border: none;
-      border-radius: 9999px;
+    button {
+      padding: 10px 20px;
+      margin: 5px;
       cursor: pointer;
-      transition: background-color 0.3s, box-shadow 0.3s;
-    }
-    .connect-button:hover {
-      background-color: #e0e0e0;
-    }
-    .vip-button {
-      background-color: #8b008b;
-      color: white;
-      font-weight: bold;
-      margin-left: 10px;
-      box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-    }
-    .vip-button:hover:not(:disabled) {
-      background-color: #6a006a;
-      box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
-    }
-    .vip-button:disabled {
-      background-color: #4b004b;
-      color: #888;
-      cursor: not-allowed;
-      box-shadow: none;
-    }
-    .nav-button {
-      font-size: 16px;
-      color: white;
-      font-weight: bold;
-      background: none;
-      border: none;
-      cursor: pointer;
-      transition: color 0.3s;
-    }
-    .nav-button:hover {
-      color: #cccccc;
     }
     #status {
-      margin-top: 20px;
-      font-size: 16px;
-      color: #ccc;
+      margin-top: 10px;
+      color: #333;
     }
-    #controls {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      z-index: 10;
-    }
-    #nav-controls {
-      position: absolute;
-      top: 20px;
-      left: 20px;
-      display: flex;
-      align-items: center;
-      gap: 20px;
-    }
-    #balance {
-      margin-right: 10px;
-    }
-    @media (max-width: 600px) {
-      #controls {
-        flex-direction: column;
-        align-items: flex-end;
-        top: 10px;
-        right: 10px;
-      }
-      .connect-button, .vip-button {
-        width: 100%;
-        max-width: 200px;
-      }
-      .content {
-        margin-top: 0;
-      }
+    img {
+      max-width: 100%;
+      height: auto;
     }
   </style>
 </head>
 <body>
-  <div id="nav-controls">
-    <button id="home" class="nav-button">Solmemetics</button>
-  </div>
-  <div id="controls">
-    <div id="balance">Balance: 0 SMM</div>
-    <button id="connect" class="connect-button">Connect</button>
-    <button id="vipAccess" class="connect-button vip-button" disabled>VIP Access</button>
-  </div>
-  <div class="content">
-    <img src="your-image.png" alt="solmemetics-icon" />
-    <h1>Launching coins with fees...</h1>
-    <div id="status"></div>
-  </div>
+  <h1>Solmemetics</h1>
+  <img src="your-image.png" alt="solmemetics-icon" />
+  <p id="status">Status: Disconnected</p>
+  <p>Balance: <span id="balance">0</span> SMM</p>
+  <button id="connect">Connect</button>
+  <button id="vipBtn" disabled>VIP Access</button>
 
-  <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
   <script>
     const TOKEN_MINT = new solanaWeb3.PublicKey("BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups");
-    const TOTAL_SUPPLY = 100000000;
-    const ONE_PERCENT = TOTAL_SUPPLY * 0.01;
     const VIP_MINIMUM = 100000;
-
+    const status = document.getElementById("status");
+    const balanceSpan = document.getElementById("balance");
     const connectBtn = document.getElementById("connect");
-    const vipBtn = document.getElementById("vipAccess");
-    const statusDiv = document.getElementById("status");
-    const balanceDiv = document.getElementById("balance");
-    const homeBtn = document.getElementById("home");
+    const vipBtn = document.getElementById("vipBtn");
     let cachedBalance = 0;
 
     const RPC_ENDPOINTS = [
@@ -152,10 +51,6 @@
       solanaWeb3.clusterApiUrl("mainnet-beta"),
       "https://api.mainnet-beta.solana.com"
     ];
-
-    homeBtn.addEventListener("click", () => {
-      window.location.href = "https://solmemetics.com";
-    });
 
     async function getConnection(attempt = 0) {
       const rpc = RPC_ENDPOINTS[attempt];
@@ -166,197 +61,66 @@
         return connection;
       } catch (err) {
         console.error(`RPC ${rpc} failed:`, err);
-        if (attempt < RPC_ENDPOINTS.length - 1) {
-          return getConnection(attempt + 1);
-        }
+        if (attempt < RPC_ENDPOINTS.length - 1) return getConnection(attempt + 1);
         throw new Error("All RPC endpoints failed.");
       }
     }
 
-    async function checkPhantomAndConnect() {
-      if (!window.solana || !window.solana.isPhantom) {
-        statusDiv.textContent = "Phantom Wallet not found. Please install Phantom.";
-        window.open("https://phantom.app/", "_blank");
-        return;
-      }
-
+    async function updateBalance(publicKey) {
       try {
-        const provider = window.solana;
-        const resp = await provider.connect();
-        const publicKey = resp.publicKey;
-        statusDiv.textContent = `Connected: ${publicKey.toBase58().slice(0, 6)}...`;
-        console.log("Wallet connected:", publicKey.toBase58());
-
         const connection = await getConnection();
-
-        try {
-          new solanaWeb3.PublicKey(TOKEN_MINT);
-        } catch (formatError) {
-          console.error("Invalid mint address format:", formatError);
-          statusDiv.textContent = "Error: SMM token mint address is malformed.";
-          vipBtn.disabled = true;
-          return;
+        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+          publicKey,
+          { mint: TOKEN_MINT, programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") }
+        );
+        let tokenBalance = 0;
+        for (const { account } of tokenAccounts.value) {
+          if (account.data.parsed.info.mint === TOKEN_MINT.toBase58()) {
+            tokenBalance = parseFloat(account.data.parsed.info.tokenAmount.uiAmount);
+            break;
+          }
         }
-
-        statusDiv.textContent += " Validating SMM token mint...";
-        try {
-          const mintInfo = await connection.getParsedAccountInfo(TOKEN_MINT);
-          if (!mintInfo.value) {
-            statusDiv.textContent = "Error: SMM token mint does not exist on Mainnet.";
-            console.error("Mint not found:", TOKEN_MINT.toBase58());
-            vipBtn.disabled = true;
-            return;
-          }
-          if (mintInfo.value.data.program !== "spl-token") {
-            statusDiv.textContent = "Error: Address is not a valid SPL token mint for SMM.";
-            console.error("Invalid token mint program:", TOKEN_MINT.toBase58());
-            vipBtn.disabled = true;
-            return;
-          }
-        } catch (mintError) {
-          console.error("Mint validation error:", mintError);
-          statusDiv.textContent = `Error: Failed to validate SMM token mint. ${mintError.message}`;
-          vipBtn.disabled = true;
-          return;
-        }
-
-        statusDiv.textContent += " Checking SMM token balance...";
-        try {
-          const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-            publicKey,
-            {
-              mint: TOKEN_MINT,
-              programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
-            }
-          );
-
-          let tokenBalance = 0;
-          for (const { account } of tokenAccounts.value) {
-            const info = account.data.parsed.info;
-            if (info.mint === TOKEN_MINT.toBase58()) {
-              tokenBalance = parseFloat(info.tokenAmount.uiAmount);
-              break;
-            }
-          }
-
-          const balanceString = tokenBalance.toString();
-          const [integerPart, decimalPart] = balanceString.split('.');
-          let displayBalance = integerPart;
-          if (decimalPart) {
-            const trimmedDecimals = decimalPart.replace(/0+$/, '').slice(0, 9);
-            if (trimmedDecimals) {
-              displayBalance += '.' + trimmedDecimals;
-            }
-          }
-          balanceDiv.textContent = `Balance: ${displayBalance || 0} SMM`;
-          cachedBalance = tokenBalance;
-          console.log("Balance fetched:", tokenBalance);
-
-          vipBtn.disabled = tokenBalance < VIP_MINIMUM;
-          if (tokenBalance < VIP_MINIMUM) {
-            statusDiv.textContent = `Access denied: You need at least ${VIP_MINIMUM.toLocaleString()} SMM to enter VIP. Current balance: ${tokenBalance.toLocaleString()} SMM.`;
-          } else {
-            statusDiv.textContent = getCompliment(tokenBalance);
-          }
-
-          function getCompliment(balance) {
-            if (balance < 1 && balance > 0) {
-              return "That's not even one token, are you sure you have the right wallet?";
-            } else if (balance === 1) {
-              return "Hmm, just 1 SMM? Curious, why so few?";
-            } else if (balance > 1 && balance <= 10) {
-              const compliments = [
-                "Nice start with your SMM! Maybe take it slow in crypto?",
-                "A few SMM - great taste, but crypto might not be your full-time gig yet!",
-                "You’ve got some SMM! Perhaps crypto’s a gentle hobby for now?"
-              ];
-              return compliments[Math.floor(Math.random() * compliments.length)];
-            } else if (balance > 10 && balance <= 100) {
-              const compliments = [
-                "Wow, over 10 SMM! You’re doing well - maybe crypto isn’t your calling, but it’s fun!",
-                "More than 10 SMM? Impressive, though you might enjoy it more outside crypto!",
-                "Over 10 SMM - nice stash! Crypto might be a sideline for you, no pressure!"
-              ];
-              return compliments[Math.floor(Math.random() * compliments.length)];
-            } else if (balance > 100 && balance <= ONE_PERCENT) {
-              const compliments = [
-                "Over 100 SMM? That’s cool! Have you thought about grabbing more?",
-                "Nice, more than 100 SMM! Ever considered adding to your stack?",
-                "100+ SMM - awesome! Maybe pick up a few more when you can?"
-              ];
-              return compliments[Math.floor(Math.random() * compliments.length)];
-            } else if (balance > ONE_PERCENT) {
-              return "With over 1% of SMM (1 million+), you’re a powerhouse! You could shape the project’s direction - exciting times ahead!";
-            } else if (balance === 0) {
-              return "No tokens found in this wallet, this definitely can't be the right wallet";
-            }
-            return "Error determining SMM balance.";
-          }
-
-          connectBtn.textContent = "Disconnect";
-          connectBtn.onclick = async () => {
-            try {
-              await provider.disconnect();
-              connectBtn.textContent = "Connect";
-              balanceDiv.textContent = "Balance: 0 SMM";
-              statusDiv.textContent = "";
-              cachedBalance = 0;
-              sessionStorage.removeItem("smmVipVerified");
-              sessionStorage.removeItem("smmPublicKey");
-              localStorage.removeItem("smmVipChat");
-              vipBtn.disabled = true;
-              connectBtn.onclick = checkPhantomAndConnect;
-            } catch (err) {
-              console.error("Disconnect error:", err);
-              statusDiv.textContent = "Error disconnecting from Phantom wallet.";
-              vipBtn.disabled = true;
-            }
-          };
-        } catch (err) {
-          console.error("Balance check error:", err);
-          statusDiv.textContent = `Error: Failed to fetch SMM token balance. ${err.message}`;
-          vipBtn.disabled = true;
-        }
+        cachedBalance = tokenBalance;
+        balanceSpan.textContent = tokenBalance.toLocaleString();
+        status.textContent = `Connected: ${publicKey.toBase58().slice(0, 6)}...`;
+        vipBtn.disabled = tokenBalance < VIP_MINIMUM;
       } catch (err) {
-        console.error("Connection error:", err);
-        if (err.code === 4001) {
-          statusDiv.textContent = "Connection rejected by user.";
-        } else {
-          statusDiv.textContent = `Error: Failed to connect to Phantom wallet. ${err.message}`;
-        }
+        console.error("Balance fetch failed:", err);
+        status.textContent = `Error fetching balance: ${err.message}`;
         vipBtn.disabled = true;
       }
     }
 
-    connectBtn.addEventListener("click", checkPhantomAndConnect);
-
-    vipBtn.addEventListener("click", () => {
-      console.log("VIP button clicked, isConnected:", window.solana?.isConnected, "Balance:", cachedBalance);
-      if (!window.solana || !window.solana.isConnected) {
-        statusDiv.textContent = "Please connect your Phantom wallet first.";
+    connectBtn.addEventListener("click", async () => {
+      if (!window.solana || !window.solana.isPhantom) {
+        status.textContent = "Phantom Wallet required. Install it here.";
+        window.open("https://phantom.app/", "_blank");
         return;
       }
-      if (cachedBalance === undefined || cachedBalance === null) {
-        statusDiv.textContent = "Error: Balance not loaded. Please try reconnecting.";
-        return;
-      }
-      if (cachedBalance >= VIP_MINIMUM) {
-        sessionStorage.setItem("smmVipVerified", "true");
-        sessionStorage.setItem("smmPublicKey", window.solana.publicKey.toBase58());
-        window.location.href = "vip.html";
-      } else {
-        statusDiv.textContent = `Access denied: You need at least ${VIP_MINIMUM.toLocaleString()} SMM to enter VIP. Current balance: ${cachedBalance.toLocaleString()} SMM.`;
+      try {
+        const resp = await window.solana.connect();
+        const publicKey = resp.publicKey;
+        sessionStorage.setItem("smmPublicKey", publicKey.toBase58());
+        await updateBalance(publicKey);
+      } catch (err) {
+        console.error("Connection failed:", err);
+        status.textContent = "Failed to connect wallet. Try again.";
       }
     });
 
-    window.addEventListener("load", async () => {
-      if (window.solana && window.solana.isPhantom && window.solana.isConnected) {
-        try {
-          await checkPhantomAndConnect();
-        } catch (err) {
-          console.error("Auto-connect error:", err);
-          vipBtn.disabled = true;
-        }
+    vipBtn.addEventListener("click", () => {
+      if (cachedBalance >= VIP_MINIMUM) {
+        sessionStorage.setItem("smmVipVerified", "true");
+        window.location.href = "vip.html";
+      } else {
+        status.textContent = `Need ${VIP_MINIMUM.toLocaleString()} SMM for VIP access. Current: ${cachedBalance.toLocaleString()} SMM`;
+      }
+    });
+
+    window.addEventListener("load", () => {
+      const storedPublicKey = sessionStorage.getItem("smmPublicKey");
+      if (storedPublicKey && window.solana?.isConnected) {
+        updateBalance(new solanaWeb3.PublicKey(storedPublicKey));
       }
     });
   </script>
