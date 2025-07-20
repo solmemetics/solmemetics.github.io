@@ -143,242 +143,291 @@
   <button id="retry" class="retry-button" style="display: none;">Retry Connection</button>
 
   <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
-  <script src="https://unpkg.com/bs58@5.0.0/index.js"></script>
-  <script>
-    const TOKEN_MINT = new solanaWeb3.PublicKey("BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups");
-    const VIP_MINIMUM = 100000;
-    const statusDiv = document.getElementById("status");
-    const retryBtn = document.getElementById("retry");
-    const chatMessages = document.getElementById("chat-messages");
-    let ws;
+<script src="https://cdn.jsdelivr.net/npm/bs58@5.0.0/index.min.js"></script>
+<script>
+  const TOKEN_MINT = new solanaWeb3.PublicKey("BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups");
+  const VIP_MINIMUM = 100000;
+  const statusDiv = document.getElementById("status");
+  const retryBtn = document.getElementById("retry");
+  const chatMessages = document.getElementById("chat-messages");
+  let ws;
+  let retryCount = 0;
+  const MAX_RETRIES = 5;
+  const RETRY_INTERVAL = 5000;
 
-    const RPC_ENDPOINTS = [
-      "https://silent-fluent-diamond.solana-mainnet.quiknode.pro/bdf6a6133f8736f5bf9097f4628841fe18b60bcc",
-      solanaWeb3.clusterApiUrl("mainnet-beta"),
-      "https://api.mainnet-beta.solana.com"
-    ];
+  // Verify bs58 is loaded
+  if (typeof bs58 === "undefined") {
+    console.error("bs58 library not loaded");
+    statusDiv.textContent = "Error: bs58 library failed to load. Please refresh the page.";
+  } else {
+    console.log("bs58 library loaded successfully");
+  }
 
-    async function getConnection(attempt = 0) {
-      const rpc = RPC_ENDPOINTS[attempt];
-      try {
-        const connection = new solanaWeb3.Connection(rpc, { commitment: "confirmed", disableRetryOnRateLimit: false });
-        await connection.getSlot();
-        console.log(`Connected to RPC: ${rpc}`);
-        return connection;
-      } catch (err) {
-        console.error(`RPC ${rpc} failed:`, err);
-        if (attempt < RPC_ENDPOINTS.length - 1) {
-          return getConnection(attempt + 1);
-        }
-        throw new Error("All RPC endpoints failed.");
+  const RPC_ENDPOINTS = [
+    "https://silent-fluent-diamond.solana-mainnet.quiknode.pro/bdf6a6133f8736f5bf9097f4628841fe18b60bcc",
+    solanaWeb3.clusterApiUrl("mainnet-beta"),
+    "https://api.mainnet-beta.solana.com"
+  ];
+
+  async function getConnection(attempt = 0) {
+    const rpc = RPC_ENDPOINTS[attempt];
+    try {
+      const connection = new solanaWeb3.Connection(rpc, { commitment: "confirmed", disableRetryOnRateLimit: false });
+      await connection.getSlot();
+      console.log(`Connected to RPC: ${rpc}`);
+      return connection;
+    } catch (err) {
+      console.error(`RPC ${rpc} failed:`, err);
+      if (attempt < RPC_ENDPOINTS.length - 1) {
+        return getConnection(attempt + 1);
       }
+      throw new Error("All RPC endpoints failed.");
+    }
+  }
+
+  async function updateVipInfo(publicKey, connection) {
+    try {
+      const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+        publicKey,
+        { mint: TOKEN_MINT, programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") }
+      );
+      let tokenBalance = 0;
+      for (const { account } of tokenAccounts.value) {
+        if (account.data.parsed.info.mint === TOKEN_MINT.toBase58()) {
+          tokenBalance = parseFloat(account.data.parsed.info.tokenAmount.uiAmount);
+          break;
+        }
+      }
+      document.getElementById("vip-balance").textContent = tokenBalance.toLocaleString();
+      const rank = tokenBalance >= 1000000 ? "Rhodium" :
+                   tokenBalance >= 750000 ? "Platinum" :
+                   tokenBalance >= 500000 ? "Gold" :
+                   tokenBalance >= 250000 ? "Silver" :
+                   tokenBalance >= 100000 ? "Bronze" : "No Rank";
+      document.getElementById("vip-rank").textContent = rank;
+      return { balance: tokenBalance, rank };
+    } catch (err) {
+      console.error("Failed to update VIP info:", err);
+      statusDiv.textContent = `Error fetching balance: ${err.message}`;
+      return { balance: 0, rank: "No Rank" };
+    }
+  }
+
+  async function connectWebSocket(rank, userAddress) {
+    if (retryCount >= MAX_RETRIES) {
+      statusDiv.textContent = "Max retry attempts reached. Please click Retry or refresh the page.";
+      retryBtn.style.display = "block";
+      return;
     }
 
-    async function updateVipInfo(publicKey, connection) {
+    ws = new WebSocket("wss://smm-chat-server.onrender.com"); // Replace with your Render URL
+
+    ws.onopen = async () => {
+      statusDiv.textContent = "Authenticating with chat server...";
       try {
-        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-          publicKey,
-          { mint: TOKEN_MINT, programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") }
-        );
-        let tokenBalance = 0;
-        for (const { account } of tokenAccounts.value) {
-          if (account.data.parsed.info.mint === TOKEN_MINT.toBase58()) {
-            tokenBalance = parseFloat(account.data.parsed.info.tokenAmount.uiAmount);
-            break;
-          }
+        if (!window.solana || !window.solana.signMessage) {
+          throw new Error("Phantom wallet not detected");
         }
-        document.getElementById("vip-balance").textContent = tokenBalance.toLocaleString();
-        const rank = tokenBalance >= 1000000 ? "Rhodium" :
-                     tokenBalance >= 750000 ? "Platinum" :
-                     tokenBalance >= 500000 ? "Gold" :
-                     tokenBalance >= 250000 ? "Silver" :
-                     tokenBalance >= 100000 ? "Bronze" : "No Rank";
-        document.getElementById("vip-rank").textContent = rank;
-        return { balance: tokenBalance, rank };
-      } catch (err) {
-        console.error("Failed to update VIP info:", err);
-        statusDiv.textContent = `Error fetching balance: ${err.message}`;
-        return { balance: 0, rank: "No Rank" };
-      }
-    }
-
-    async function connectWebSocket(rank, userAddress) {
-      ws = new WebSocket("wss://smm-chat-server.onrender.com"); // Replace with your Render URL
-
-      ws.onopen = async () => {
-        statusDiv.textContent = "Authenticating with chat server...";
+        const sessionToken = `smm-vip-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const message = new TextEncoder().encode(sessionToken);
+        let signature;
         try {
-          const sessionToken = `smm-vip-${Date.now()}`;
-          const message = new TextEncoder().encode(sessionToken);
-          const signature = await window.solana.signMessage(message);
-          ws.send(JSON.stringify({
-            type: "auth",
-            publicKey: window.solana.publicKey.toBase58(),
-            signature: bs58.encode(signature),
-            sessionToken
-          }));
-        } catch (err) {
-          console.error("Signature error:", err);
-          statusDiv.textContent = "Authentication failed. Retrying...";
+          signature = await window.solana.signMessage(message);
+          console.log("Signature created:", bs58.encode(signature));
+        } catch (signErr) {
+          console.error("Signature failed:", signErr);
+          statusDiv.textContent = "Wallet signature failed. Retrying...";
+          ws.close();
+          return;
+        }
+        if (!bs58) {
+          throw new Error("bs58 library not loaded");
+        }
+        console.log("Sending auth:", { publicKey: window.solana.publicKey.toBase58(), sessionToken });
+        ws.send(JSON.stringify({
+          type: "auth",
+          publicKey: window.solana.publicKey.toBase58(),
+          signature: bs58.encode(signature),
+          sessionToken
+        }));
+      } catch (err) {
+        console.error("Auth error:", err);
+        statusDiv.textContent = `Authentication error: ${err.message}. Retrying...`;
+        ws.close();
+      }
+    };
+
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      if (msg.type === "auth") {
+        if (msg.status === "success") {
+          statusDiv.textContent = "Connected to chat server!";
+          ws.isAuthenticated = true;
+          retryCount = 0;
+          console.log("WebSocket authenticated");
+        } else {
+          console.error("Auth failed:", msg);
+          statusDiv.textContent = "Authentication failed: Invalid wallet or balance. Retrying...";
           ws.close();
         }
-      };
+      } else if (msg.user && msg.rank && msg.text && msg.timestamp) {
+        const date = new Date(msg.timestamp);
+        const timeString = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        const p = document.createElement("p");
+        p.innerHTML = `<span class="rank-${msg.rank.toLowerCase()}">${msg.rank}: ${msg.user}</span> (${timeString}): ${msg.text}`;
+        chatMessages.appendChild(p);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+    };
 
-      ws.onmessage = (event) => {
-        const msg = JSON.parse(event.data);
-        if (msg.type === "auth") {
-          if (msg.status === "success") {
-            statusDiv.textContent = "Connected to chat server!";
-            console.log("WebSocket authenticated");
-          } else {
-            statusDiv.textContent = "Authentication failed. Retrying...";
-            ws.close();
-          }
-        } else if (msg.user && msg.rank && msg.text && msg.timestamp) {
-          const date = new Date(msg.timestamp);
-          const timeString = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-          const p = document.createElement("p");
-          p.innerHTML = `<span class="rank-${msg.rank.toLowerCase()}">${msg.rank}: ${msg.user}</span> (${timeString}): ${msg.text}`;
-          chatMessages.appendChild(p);
-          chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-      };
+    ws.onclose = (e) => {
+      console.log("WebSocket closed:", e.code, e.reason);
+      statusDiv.textContent = `Chat server disconnected. Retrying (${retryCount + 1}/${MAX_RETRIES})...`;
+      if (retryCount < MAX_RETRIES) {
+        retryCount++;
+        setTimeout(() => connectWebSocket(rank, userAddress), RETRY_INTERVAL);
+      } else {
+        statusDiv.textContent = "Max retry attempts reached. Please click Retry or refresh the page.";
+        retryBtn.style.display = "block";
+      }
+    };
 
-      ws.onclose = () => {
-        statusDiv.textContent = "Chat server disconnected. Retrying...";
-        setTimeout(() => connectWebSocket(rank, userAddress), 5000);
-      };
+    ws.onerror = (e) => {
+      console.error("WebSocket error:", e);
+      statusDiv.textContent = "Chat server error. Retrying...";
+    };
+  }
 
-      ws.onerror = (err) => {
-        console.error("WebSocket error:", err);
-        statusDiv.textContent = "Chat server error. Retrying...";
-      };
+  document.getElementById("send-chat").addEventListener("click", () => {
+    const input = document.getElementById("chat-input");
+    const text = input.value.trim();
+    if (!text || !ws || ws.readyState !== WebSocket.OPEN || !ws.isAuthenticated) {
+      statusDiv.textContent = !ws ? "No WebSocket connection." :
+                              ws.readyState !== WebSocket.OPEN ? "WebSocket not connected." :
+                              !ws.isAuthenticated ? "Not authenticated. Please wait." : "Enter a valid message.";
+      return;
+    }
+    const user = window.solana?.publicKey?.toBase58().slice(0, 6) || "Anon";
+    const rank = document.getElementById("vip-rank").textContent;
+    ws.send(JSON.stringify({ type: "chat", user, rank, text }));
+    input.value = "";
+    statusDiv.textContent = "Message sent!";
+  });
+
+  document.getElementById("chat-input").addEventListener("keypress", (e) => {
+    if (e.key === "Enter") document.getElementById("send-chat").click();
+  });
+
+  document.getElementById("clear-chat").addEventListener("click", () => {
+    chatMessages.innerHTML = "";
+    statusDiv.textContent = "Chat cleared locally.";
+  });
+
+  async function checkVipAccess() {
+    if (!window.solana || !window.solana.isPhantom) {
+      statusDiv.textContent = "Phantom Wallet required. Please install Phantom.";
+      retryBtn.style.display = "none";
+      window.open("https://phantom.app/", "_blank");
+      return false;
     }
 
-    document.getElementById("send-chat").addEventListener("click", () => {
-      const input = document.getElementById("chat-input");
-      const text = input.value.trim();
-      if (!text || !ws || ws.readyState !== WebSocket.OPEN || !ws.isAuthenticated) return;
-      const user = window.solana?.publicKey?.toBase58().slice(0, 6) || "Anon";
-      const rank = document.getElementById("vip-rank").textContent;
-      ws.send(JSON.stringify({ type: "chat", user, rank, text }));
-      input.value = "";
-      statusDiv.textContent = "Message sent!";
-    });
+    try {
+      const provider = window.solana;
+      let publicKey;
 
-    document.getElementById("chat-input").addEventListener("keypress", (e) => {
-      if (e.key === "Enter") document.getElementById("send-chat").click();
-    });
+      const storedPublicKey = sessionStorage.getItem("smmPublicKey");
+      const isVerified = sessionStorage.getItem("smmVipVerified") === "true";
 
-    document.getElementById("clear-chat").addEventListener("click", () => {
-      chatMessages.innerHTML = "";
-      statusDiv.textContent = "Chat cleared locally.";
-    });
-
-    async function checkVipAccess() {
-      if (!window.solana || !window.solana.isPhantom) {
-        statusDiv.textContent = "Phantom Wallet required. Please install Phantom.";
-        retryBtn.style.display = "none";
-        window.open("https://phantom.app/", "_blank");
-        return false;
-      }
-
-      try {
-        const provider = window.solana;
-        let publicKey;
-
-        const storedPublicKey = sessionStorage.getItem("smmPublicKey");
-        const isVerified = sessionStorage.getItem("smmVipVerified") === "true";
-
-        if (window.solana.isConnected) {
-          publicKey = provider.publicKey;
-          console.log("Using existing wallet connection:", publicKey.toBase58());
-          if (isVerified && storedPublicKey === publicKey.toBase58()) {
-            console.log("VIP access verified via sessionStorage");
-            statusDiv.textContent = "VIP access granted!";
-            const connection = await getConnection();
-            const { rank } = await updateVipInfo(publicKey, connection);
-            connectWebSocket(rank, publicKey.toBase58().slice(0, 6));
-            return true;
-          }
-        } else {
-          try {
-            const resp = await provider.connect({ onlyIfTrusted: true });
-            publicKey = resp.publicKey;
-            console.log("Silent wallet connection:", publicKey.toBase58());
-          } catch (connectErr) {
-            console.error("Silent connection failed:", connectErr);
-            statusDiv.textContent = "Please connect your Phantom wallet.";
-            retryBtn.style.display = "block";
-            return false;
-          }
+      if (window.solana.isConnected) {
+        publicKey = provider.publicKey;
+        console.log("Using existing wallet connection:", publicKey.toBase58());
+        if (isVerified && storedPublicKey === publicKey.toBase58()) {
+          console.log("VIP access verified via sessionStorage");
+          statusDiv.textContent = "VIP access granted!";
+          const connection = await getConnection();
+          const { rank } = await updateVipInfo(publicKey, connection);
+          connectWebSocket(rank, publicKey.toBase58().slice(0, 6));
+          return true;
         }
-
-        statusDiv.textContent = `Connected: ${publicKey.toBase58().slice(0, 6)}...`;
-        statusDiv.textContent += " Checking SMM token balance...";
-
-        const connection = await getConnection();
-        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-          publicKey,
-          {
-            mint: TOKEN_MINT,
-            programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
-          }
-        );
-
-        let tokenBalance = 0;
-        for (const { account } of tokenAccounts.value) {
-          const info = account.data.parsed.info;
-          if (info.mint === TOKEN_MINT.toBase58()) {
-            tokenBalance = parseFloat(info.tokenAmount.uiAmount);
-            break;
-          }
-        }
-
-        if (tokenBalance < VIP_MINIMUM) {
-          statusDiv.textContent = `Access denied: You need at least ${VIP_MINIMUM.toLocaleString()} SMM tokens. Current balance: ${tokenBalance.toLocaleString()} SMM.`;
+      } else {
+        try {
+          const resp = await provider.connect({ onlyIfTrusted: true });
+          publicKey = resp.publicKey;
+          console.log("Silent wallet connection:", publicKey.toBase58());
+        } catch (connectErr) {
+          console.error("Silent connection failed:", connectErr);
+          statusDiv.textContent = "Please connect your Phantom wallet.";
           retryBtn.style.display = "block";
-          sessionStorage.removeItem("smmVipVerified");
-          sessionStorage.removeItem("smmPublicKey");
           return false;
         }
+      }
 
-        sessionStorage.setItem("smmVipVerified", "true");
-        sessionStorage.setItem("smmPublicKey", publicKey.toBase58());
-        statusDiv.textContent = "VIP access granted!";
-        const { rank } = await updateVipInfo(publicKey, connection);
-        connectWebSocket(rank, publicKey.toBase58().slice(0, 6));
-        return true;
-      } catch (err) {
-        console.error("VIP access check failed:", err);
-        statusDiv.textContent = `Could not verify SMM balance: ${err.message}`;
+      statusDiv.textContent = `Connected: ${publicKey.toBase58().slice(0, 6)}...`;
+      statusDiv.textContent += " Checking SMM token balance...";
+
+      const connection = await getConnection();
+      const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+        publicKey,
+        {
+          mint: TOKEN_MINT,
+          programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+        }
+      );
+
+      let tokenBalance = 0;
+      for (const { account } of tokenAccounts.value) {
+        const info = account.data.parsed.info;
+        if (info.mint === TOKEN_MINT.toBase58()) {
+          tokenBalance = parseFloat(info.tokenAmount.uiAmount);
+          break;
+        }
+      }
+
+      if (tokenBalance < VIP_MINIMUM) {
+        statusDiv.textContent = `Access denied: You need at least ${VIP_MINIMUM.toLocaleString()} SMM tokens. Current balance: ${tokenBalance.toLocaleString()} SMM.`;
         retryBtn.style.display = "block";
+        sessionStorage.removeItem("smmVipVerified");
+        sessionStorage.removeItem("smmPublicKey");
         return false;
       }
+
+      sessionStorage.setItem("smmVipVerified", "true");
+      sessionStorage.setItem("smmPublicKey", publicKey.toBase58());
+      statusDiv.textContent = "VIP access granted!";
+      const { rank } = await updateVipInfo(publicKey, connection);
+      connectWebSocket(rank, publicKey.toBase58().slice(0, 6));
+      return true;
+    } catch (err) {
+      console.error("VIP access check failed:", err);
+      statusDiv.textContent = `Could not verify SMM balance: ${err.message}`;
+      retryBtn.style.display = "block";
+      return false;
     }
+  }
 
-    document.querySelectorAll(".tab-button").forEach(button => {
-      button.addEventListener("click", () => {
-        document.querySelectorAll(".tab-button").forEach(btn => btn.classList.remove("active"));
-        document.querySelectorAll(".tab-content").forEach(content => content.classList.remove("active"));
-        button.classList.add("active");
-        document.getElementById(button.dataset.tab).classList.add("active");
-      });
+  document.querySelectorAll(".tab-button").forEach(button => {
+    button.addEventListener("click", () => {
+      document.querySelectorAll(".tab-button").forEach(btn => btn.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(content => content.classList.remove("active"));
+      button.classList.add("active");
+      document.getElementById(button.dataset.tab).classList.add("active");
     });
+  });
 
-    retryBtn.addEventListener("click", async () => {
-      retryBtn.style.display = "none";
-      statusDiv.textContent = "";
-      await checkVipAccess();
-    });
+  retryBtn.addEventListener("click", async () => {
+    retryBtn.style.display = "none";
+    statusDiv.textContent = "";
+    retryCount = 0;
+    await checkVipAccess();
+  });
 
-    window.addEventListener("load", async () => {
-      const hasAccess = await checkVipAccess();
-      if (!hasAccess && !retryBtn.style.display) {
-        statusDiv.textContent = statusDiv.textContent || "Redirecting to main page...";
-        setTimeout(() => window.location.href = "index.html", 3000);
-      }
-    });
-  </script>
+  window.addEventListener("load", async () => {
+    const hasAccess = await checkVipAccess();
+    if (!hasAccess && !retryBtn.style.display) {
+      statusDiv.textContent = statusDiv.textContent || "Redirecting to main page...";
+      setTimeout(() => window.location.href = "index.html", 3000);
+    }
+  });
+</script>
 </body>
 </html>
