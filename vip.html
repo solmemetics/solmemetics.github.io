@@ -150,8 +150,8 @@
 </head>
 <body>
   <img src="your-image.png" alt="SMM Logo" />
-  <h1>Welcome to the SMM VIP Zone</h1>
-  <p>Adding new things every few days</p>
+  <h1>🎉 Welcome to the SMM VIP Zone</h1>
+  <p>Only holders of 100,000+ SMM tokens can see this page.</p>
 
   <div class="tab-nav">
     <button class="tab-button active" data-tab="info">Profile</button>
@@ -265,7 +265,7 @@
           if (msg.user && msg.rank && msg.text && msg.timestamp) {
             const index = chatMessages.children.length;
             const date = new Date(msg.timestamp);
-            const timeString = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            const timeString = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }); // Use user's local timezone
             const p = document.createElement("p");
             p.innerHTML = `<span class="rank-${msg.rank.toLowerCase()}">${msg.rank}: ${msg.user}</span> (${timeString}): ${msg.text}`;
             if (window.solana?.publicKey?.toBase58() === ADMIN_WALLET) {
@@ -282,7 +282,7 @@
             }
             chatMessages.appendChild(p);
             chatMessages.scrollTop = chatMessages.scrollHeight;
-            console.log(`Displayed message: ${msg.rank} ${msg.user}: ${msg.text}`);
+            console.log(`Displayed message: ${msg.rank} ${msg.user}: ${msg.text} at ${timeString}`);
           } else if (msg.type === "delete" && msg.index !== undefined) {
             const messages = chatMessages.children;
             if (messages[msg.index]) {
