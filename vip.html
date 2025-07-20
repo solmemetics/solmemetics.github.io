@@ -55,7 +55,7 @@
       border-radius: 10px;
       margin-top: 20px;
       width: 100%;
-      max-width: 800px; /* Wider chatbox */
+      max-width: 800px;
       text-align: left;
     }
     #vip-rank {
@@ -142,16 +142,16 @@
     .rank-rhodium { color: #b9f2ff; }
     img {
       display: block;
-      margin: 0 auto 20px auto; /* Center image */
-      max-width: 100%; /* Preserve aspect ratio */
-      height: auto; /* Maintain proportions */
+      margin: 0 auto 20px auto;
+      max-width: 100%;
+      height: auto;
     }
   </style>
 </head>
 <body>
   <img src="your-image.png" alt="SMM Logo" />
-  <h1>🎉 Welcome to the SMM VIP Zone</h1>
-  <p>Only holders of 100,000+ SMM tokens can see this page.</p>
+  <h1>Welcome to the SMM VIP Zone</h1>
+  <p>Adding new things every few days</p>
 
   <div class="tab-nav">
     <button class="tab-button active" data-tab="info">Profile</button>
@@ -360,17 +360,21 @@
         })
           .then(response => {
             if (response.ok) {
-              document.getElementById("username-display").textContent = username;
-              statusDiv.textContent = "Username set successfully!";
-              usernameInput.style.display = "none";
-              usernameInput.value = "";
+              return response.text();
             } else {
-              throw new Error("Failed to set username");
+              throw new Error(`HTTP error! status: ${response.status}`);
             }
+          })
+          .then(data => {
+            document.getElementById("username-display").textContent = username;
+            statusDiv.textContent = "Username set successfully!";
+            usernameInput.style.display = "none";
+            usernameInput.value = "";
+            console.log("Username set response:", data);
           })
           .catch(err => {
             console.error("Error setting username:", err);
-            statusDiv.textContent = "Error setting username.";
+            statusDiv.textContent = `Error setting username: ${err.message}`;
           });
       }
     });
