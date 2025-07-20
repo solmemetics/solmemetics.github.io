@@ -124,6 +124,17 @@
     #set-username-btn {
       margin-left: 10px;
     }
+    #username-input {
+      display: none;
+      width: 60%;
+      padding: 8px;
+      border-radius: 5px;
+      border: none;
+      background: #333;
+      color: white;
+      font-weight: bold;
+      margin-top: 10px;
+    }
     .rank-bronze { color: #cd7f32; }
     .rank-silver { color: #c0c0c0; }
     .rank-gold { color: #ffd700; }
@@ -132,8 +143,8 @@
     img {
       display: block;
       margin: 0 auto 20px auto; /* Center image */
-      width: 200px; /* Adjust based on your-image.png */
-      height: 100px; /* Adjust based on your-image.png */
+      max-width: 100%; /* Preserve aspect ratio */
+      height: auto; /* Maintain proportions */
     }
   </style>
 </head>
@@ -152,8 +163,8 @@
       <p>Your SMM Balance: <span id="vip-balance">0</span> SMM</p>
       <p>Your VIP Rank: <span id="vip-rank">Loading...</span></p>
       <p>Username: <span id="username-display">Not set</span></p>
-      <input id="username-input" type="text" placeholder="Set username..." style="width: 60%;">
       <button id="set-username-btn" class="retry-button">Set Username</button>
+      <input id="username-input" type="text" placeholder="Set username...">
     </div>
   </div>
   <div id="chat" class="tab-content">
@@ -175,6 +186,8 @@
     const statusDiv = document.getElementById("status");
     const retryBtn = document.getElementById("retry");
     const chatMessages = document.getElementById("chat-messages");
+    const setUsernameBtn = document.getElementById("set-username-btn");
+    const usernameInput = document.getElementById("username-input");
     let ws;
     let retryCount = 0;
     const MAX_RETRIES = 5;
@@ -321,34 +334,44 @@
       if (e.key === "Enter") document.getElementById("send-chat").click();
     });
 
-    document.getElementById("set-username-btn").addEventListener("click", async () => {
-      const input = document.getElementById("username-input");
-      const username = input.value.trim();
-      if (!username) {
-        statusDiv.textContent = "Please enter a username.";
-        return;
+    setUsernameBtn.addEventListener("click", () => {
+      usernameInput.style.display = usernameInput.style.display === "none" ? "block" : "none";
+      if (usernameInput.style.display === "block") {
+        usernameInput.focus();
       }
-      const user = window.solana?.publicKey?.toBase58();
-      if (!user) {
-        statusDiv.textContent = "Please connect your wallet.";
-        return;
-      }
-      try {
-        const response = await fetch("/set-username", {
+    });
+
+    usernameInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        const username = usernameInput.value.trim();
+        if (!username) {
+          statusDiv.textContent = "Please enter a username.";
+          return;
+        }
+        const user = window.solana?.publicKey?.toBase58();
+        if (!user) {
+          statusDiv.textContent = "Please connect your wallet.";
+          return;
+        }
+        fetch("https://smm-chat-server.onrender.com/set-username", { // Replace with your Render URL
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ wallet: user, username }),
-        });
-        if (response.ok) {
-          document.getElementById("username-display").textContent = username;
-          statusDiv.textContent = "Username set successfully!";
-          input.value = "";
-        } else {
-          statusDiv.textContent = "Failed to set username.";
-        }
-      } catch (err) {
-        console.error("Error setting username:", err);
-        statusDiv.textContent = "Error setting username.";
+        })
+          .then(response => {
+            if (response.ok) {
+              document.getElementById("username-display").textContent = username;
+              statusDiv.textContent = "Username set successfully!";
+              usernameInput.style.display = "none";
+              usernameInput.value = "";
+            } else {
+              throw new Error("Failed to set username");
+            }
+          })
+          .catch(err => {
+            console.error("Error setting username:", err);
+            statusDiv.textContent = "Error setting username.";
+          });
       }
     });
 
