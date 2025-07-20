@@ -19,25 +19,21 @@
       margin: 0;
       padding: 20px;
     }
-
     .content {
       display: flex;
       flex-direction: column;
       align-items: center;
       margin-top: -80px;
     }
-
     img {
       max-width: 300px;
       height: auto;
       margin-bottom: 20px;
     }
-
     h1 {
       font-size: 24px;
       margin-bottom: 40px;
     }
-
     .connect-button {
       padding: 12px 24px;
       font-size: 16px;
@@ -48,11 +44,9 @@
       cursor: pointer;
       transition: background-color 0.3s, box-shadow 0.3s;
     }
-
     .connect-button:hover {
       background-color: #e0e0e0;
     }
-
     .vip-button {
       background-color: #8b008b;
       color: white;
@@ -60,19 +54,16 @@
       margin-left: 10px;
       box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
     }
-
     .vip-button:hover:not(:disabled) {
       background-color: #6a006a;
       box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
     }
-
     .vip-button:disabled {
-      background-color: #4b004b; /* Darker purple when disabled */
+      background-color: #4b004b;
       color: #888;
       cursor: not-allowed;
       box-shadow: none;
     }
-
     .nav-button {
       font-size: 16px;
       color: white;
@@ -82,17 +73,14 @@
       cursor: pointer;
       transition: color 0.3s;
     }
-
     .nav-button:hover {
       color: #cccccc;
     }
-
     #status {
       margin-top: 20px;
       font-size: 16px;
       color: #ccc;
     }
-
     #controls {
       position: absolute;
       top: 20px;
@@ -102,7 +90,6 @@
       gap: 10px;
       z-index: 10;
     }
-
     #nav-controls {
       position: absolute;
       top: 20px;
@@ -111,11 +98,9 @@
       align-items: center;
       gap: 20px;
     }
-
     #balance {
       margin-right: 10px;
     }
-
     @media (max-width: 600px) {
       #controls {
         flex-direction: column;
@@ -144,7 +129,7 @@
   </div>
   <div class="content">
     <img src="your-image.png" alt="solmemetics-icon" />
-    <h1>Launching coins with fees..</h1>
+    <h1>Launching coins with fees...</h1>
     <div id="status"></div>
   </div>
 
@@ -216,7 +201,6 @@
         statusDiv.textContent += " Validating SMM token mint...";
         try {
           const mintInfo = await connection.getParsedAccountInfo(TOKEN_MINT);
-          console.log("Mint info:", mintInfo);
           if (!mintInfo.value) {
             statusDiv.textContent = "Error: SMM token mint does not exist on Mainnet.";
             console.error("Mint not found:", TOKEN_MINT.toBase58());
@@ -268,7 +252,6 @@
           cachedBalance = tokenBalance;
           console.log("Balance fetched:", tokenBalance);
 
-          // Enable VIP button if balance is sufficient
           vipBtn.disabled = tokenBalance < VIP_MINIMUM;
           if (tokenBalance < VIP_MINIMUM) {
             statusDiv.textContent = `Access denied: You need at least ${VIP_MINIMUM.toLocaleString()} SMM to enter VIP. Current balance: ${tokenBalance.toLocaleString()} SMM.`;
@@ -320,7 +303,8 @@
               cachedBalance = 0;
               sessionStorage.removeItem("smmVipVerified");
               sessionStorage.removeItem("smmPublicKey");
-              vipBtn.disabled = true; // Disable VIP button on disconnect
+              localStorage.removeItem("smmVipChat");
+              vipBtn.disabled = true;
               connectBtn.onclick = checkPhantomAndConnect;
             } catch (err) {
               console.error("Disconnect error:", err);
