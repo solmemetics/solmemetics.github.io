@@ -143,7 +143,7 @@
   <button id="retry" class="retry-button" style="display: none;">Retry Connection</button>
 
   <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bs58@5.0.0/index.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bs58/5.0.0/index.min.js"></script>
 <script>
   const TOKEN_MINT = new solanaWeb3.PublicKey("BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups");
   const VIP_MINIMUM = 100000;
@@ -153,12 +153,13 @@
   let ws;
   let retryCount = 0;
   const MAX_RETRIES = 5;
-  const RETRY_INTERVAL = 5000;
+  const RETRY_INTERVAL = 10000; // Increased to 10s to reduce prompt spam
 
   // Verify bs58 is loaded
   if (typeof bs58 === "undefined") {
     console.error("bs58 library not loaded");
-    statusDiv.textContent = "Error: bs58 library failed to load. Please refresh the page.";
+    statusDiv.textContent = "Error: bs58 library failed to load. Please refresh the page or check your network.";
+    retryBtn.style.display = "block";
   } else {
     console.log("bs58 library loaded successfully");
   }
@@ -228,6 +229,9 @@
         if (!window.solana || !window.solana.signMessage) {
           throw new Error("Phantom wallet not detected");
         }
+        if (!bs58) {
+          throw new Error("bs58 library not loaded");
+        }
         const sessionToken = `smm-vip-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         const message = new TextEncoder().encode(sessionToken);
         let signature;
@@ -236,12 +240,9 @@
           console.log("Signature created:", bs58.encode(signature));
         } catch (signErr) {
           console.error("Signature failed:", signErr);
-          statusDiv.textContent = "Wallet signature failed. Retrying...";
+          statusDiv.textContent = "Wallet signature failed. Retrying in 10 seconds...";
           ws.close();
           return;
-        }
-        if (!bs58) {
-          throw new Error("bs58 library not loaded");
         }
         console.log("Sending auth:", { publicKey: window.solana.publicKey.toBase58(), sessionToken });
         ws.send(JSON.stringify({
@@ -252,7 +253,7 @@
         }));
       } catch (err) {
         console.error("Auth error:", err);
-        statusDiv.textContent = `Authentication error: ${err.message}. Retrying...`;
+        statusDiv.textContent = `Authentication error: ${err.message}. Retrying in 10 seconds...`;
         ws.close();
       }
     };
@@ -267,7 +268,7 @@
           console.log("WebSocket authenticated");
         } else {
           console.error("Auth failed:", msg);
-          statusDiv.textContent = "Authentication failed: Invalid wallet or balance. Retrying...";
+          statusDiv.textContent = "Authentication failed: Invalid wallet or balance. Retrying in 10 seconds...";
           ws.close();
         }
       } else if (msg.user && msg.rank && msg.text && msg.timestamp) {
@@ -294,7 +295,7 @@
 
     ws.onerror = (e) => {
       console.error("WebSocket error:", e);
-      statusDiv.textContent = "Chat server error. Retrying...";
+      statusDiv.textContent = "Chat server error. Retrying in 10 seconds...";
     };
   }
 
@@ -304,7 +305,7 @@
     if (!text || !ws || ws.readyState !== WebSocket.OPEN || !ws.isAuthenticated) {
       statusDiv.textContent = !ws ? "No WebSocket connection." :
                               ws.readyState !== WebSocket.OPEN ? "WebSocket not connected." :
-                              !ws.isAuthenticated ? "Not authenticated. Please wait." : "Enter a valid message.";
+                              !ws.isAuthenticated ? "Not authenticated. Please wait or retry." : "Enter a valid message.";
       return;
     }
     const user = window.solana?.publicKey?.toBase58().slice(0, 6) || "Anon";
