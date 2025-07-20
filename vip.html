@@ -145,6 +145,17 @@
   <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bs58/5.0.0/index.min.js"></script>
 <script>
+  // Fallback for bs58 if primary CDN fails
+  window.bs58 = window.bs58 || null;
+  if (!window.bs58) {
+    const script = document.createElement("script");
+    script.src = "https://unpkg.com/bs58@5.0.0/dist/index.min.js";
+    script.onload = () => console.log("bs58 fallback loaded successfully");
+    script.onerror = () => console.error("bs58 fallback failed to load");
+    document.head.appendChild(script);
+  }
+</script>
+<script defer>
   const TOKEN_MINT = new solanaWeb3.PublicKey("BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups");
   const VIP_MINIMUM = 100000;
   const statusDiv = document.getElementById("status");
@@ -153,10 +164,10 @@
   let ws;
   let retryCount = 0;
   const MAX_RETRIES = 5;
-  const RETRY_INTERVAL = 10000; // Increased to 10s to reduce prompt spam
+  const RETRY_INTERVAL = 10000;
 
   // Verify bs58 is loaded
-  if (typeof bs58 === "undefined") {
+  if (!window.bs58) {
     console.error("bs58 library not loaded");
     statusDiv.textContent = "Error: bs58 library failed to load. Please refresh the page or check your network.";
     retryBtn.style.display = "block";
@@ -229,7 +240,7 @@
         if (!window.solana || !window.solana.signMessage) {
           throw new Error("Phantom wallet not detected");
         }
-        if (!bs58) {
+        if (!window.bs58) {
           throw new Error("bs58 library not loaded");
         }
         const sessionToken = `smm-vip-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -237,7 +248,7 @@
         let signature;
         try {
           signature = await window.solana.signMessage(message);
-          console.log("Signature created:", bs58.encode(signature));
+          console.log("Signature created:", window.bs58.encode(signature));
         } catch (signErr) {
           console.error("Signature failed:", signErr);
           statusDiv.textContent = "Wallet signature failed. Retrying in 10 seconds...";
@@ -248,7 +259,7 @@
         ws.send(JSON.stringify({
           type: "auth",
           publicKey: window.solana.publicKey.toBase58(),
-          signature: bs58.encode(signature),
+          signature: window.bs58.encode(signature),
           sessionToken
         }));
       } catch (err) {
