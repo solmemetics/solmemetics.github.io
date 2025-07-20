@@ -115,7 +115,9 @@
         if (attempt < RPC_ENDPOINTS.length - 1) {
           return getConnection(attempt + 1);
         }
-        throw new Error("All RPC endpoints failed.");
+        statusDiv.textContent = "All RPC endpoints failed. Retrying...";
+        setTimeout(() => checkVipAccess(), 5000); // Retry every 5 seconds
+        return null;
       }
     }
 
@@ -142,7 +144,8 @@
         return { balance: tokenBalance, rank };
       } catch (err) {
         console.error("Failed to update VIP info:", err);
-        statusDiv.textContent = `Error fetching balance: ${err.message}`;
+        statusDiv.textContent = `Error fetching balance: ${err.message}. Retrying...`;
+        setTimeout(() => checkVipAccess(), 5000); // Retry on error
         return { balance: 0, rank: "No Rank" };
       }
     }
@@ -229,8 +232,10 @@
             console.log("VIP access verified via sessionStorage");
             statusDiv.textContent = "VIP access granted!";
             const connection = await getConnection();
-            const { rank } = await updateVipInfo(publicKey, connection);
-            connectWebSocket(rank, publicKey.toBase58().slice(0, 6), publicKey.toBase58());
+            if (connection) {
+              const { rank } = await updateVipInfo(publicKey, connection);
+              connectWebSocket(rank, publicKey.toBase58().slice(0, 6), publicKey.toBase58());
+            }
             return true;
           }
         } else {
@@ -248,6 +253,7 @@
         statusDiv.textContent = `Connected: ${publicKey.toBase58().slice(0, 6)}...`;
         statusDiv.textContent += " Checking SMM token balance...";
         const connection = await getConnection();
+        if (!connection) return false;
         const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
           publicKey,
           { mint: TOKEN_MINT, programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") }
@@ -275,8 +281,9 @@
         return true;
       } catch (err) {
         console.error("VIP access check failed:", err);
-        statusDiv.textContent = `Could not verify SMM balance: ${err.message}`;
+        statusDiv.textContent = `Could not verify SMM balance: ${err.message}. Retrying...`;
         retryBtn.style.display = "block";
+        setTimeout(() => checkVipAccess(), 5000); // Retry every 5 seconds
         return false;
       }
     }
