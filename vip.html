@@ -203,14 +203,13 @@
   <div id="suggestions" class="tab-content">
     <div id="suggestions-container">
       <div id="suggestions-list"></div>
-      <!-- Swapped placement: Suggestion input now above donation amount -->
       <input id="suggestion-input" type="text" placeholder="Enter your suggestion...">
       <input id="donation-amount" type="number" placeholder="Donation amount..." min="0">
       <select id="token-select">
         <option value="">Select a token</option>
         <option value="So11111111111111111111111111111111111111112" data-icon="https://app.solmemetics.com/sol.png">SOL</option>
         <option value="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" data-icon="https://app.solmemetics.com/usdc.png">USDC</option>
-        <option value="BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups" data-icon="https://app.solmemetics.com/smm.png">SMM</option> <!-- Added SMM token -->
+        <option value="BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups" data-icon="https://app.solmemetics.com/smm.png">SMM</option>
       </select>
       <button id="submit-suggestion" class="retry-button">Submit Suggestion</button>
     </div>
@@ -219,10 +218,9 @@
   <div id="status"></div>
   <button id="retry" class="retry-button" style="display: none;">Retry Connection</button>
 
-  <script src="https://unpkg.com/buffer@6.0.3/dist/index.js"></script> <!-- Buffer polyfill -->
-  <script src="https://unpkg.com/@solana/web3.js@1.98.2/lib/index.iife.min.js"></script> <!-- Updated to latest version -->
+  <script src="https://unpkg.com/buffer@6.0.3/dist/index.js"></script>
+  <script src="https://unpkg.com/@solana/web3.js@1.98.2/lib/index.iife.min.js"></script>
   <script>
-    // Ensure Buffer is available globally
     if (typeof window.Buffer === 'undefined') {
       window.Buffer = buffer.Buffer;
     }
@@ -230,7 +228,7 @@
     const TOKEN_MINT = new solanaWeb3.PublicKey("BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups");
     const VIP_MINIMUM = 100000;
     const ADMIN_WALLET = "Cj64jfCQ2dR5Utf62nMnmEq8fjerAk4u1mZY1Hv53QZA";
-    const DEV_WALLET = "Cj64jfCQ2dR5Utf62nMnmEq8fjerAk4u1mZY1Hv53QZA";
+    const DONATION_WALLET = "Cj64jfCQ2dR5Utf62nMnmEq8fjerAk4u1mZY1Hv53QZA";
     const statusDiv = document.getElementById("status");
     const retryBtn = document.getElementById("retry");
     const chatMessages = document.getElementById("chat-messages");
@@ -254,7 +252,7 @@
     const TOKEN_MAP = {
       "So11111111111111111111111111111111111111112": { ticker: "SOL", icon: "https://app.solmemetics.com/sol.png" },
       "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": { ticker: "USDC", icon: "https://app.solmemetics.com/usdc.png" },
-      "BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups": { ticker: "SMM", icon: "https://app.solmemetics.com/smm.png" } // Added SMM
+      "BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups": { ticker: "SMM", icon: "https://app.solmemetics.com/smm.png" }
     };
 
     async function getConnection(attempt = 0) {
@@ -353,7 +351,6 @@
         });
         const data = await response.json();
         if (response.ok && data.transaction) {
-          // Use Uint8Array for browser compatibility with Buffer polyfill
           const transactionBuffer = Uint8Array.from(Buffer.from(data.transaction, "base64"));
           const transaction = solanaWeb3.Transaction.from(transactionBuffer);
           const signed = await window.solana.signTransaction(transaction);
