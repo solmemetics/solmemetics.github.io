@@ -178,7 +178,7 @@
   </style>
 </head>
 <body>
-  <img src="https://app.solmemetics.com/smm.png" alt="SMM Logo" />
+  <img src="/smm.png" alt="SMM Logo" />
   <h1>Welcome to the SMM VIP Zone</h1>
   <p>Building new things here every few days.</p>
 
@@ -211,9 +211,9 @@
       <input id="donation-amount" type="number" placeholder="Donation amount..." min="0">
       <select id="token-select">
         <option value="">Select a token</option>
-        <option value="So11111111111111111111111111111111111111112" data-icon="https://app.solmemetics.com/sol.png">SOL</option>
-        <option value="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" data-icon="https://app.solmemetics.com/usdc.png">USDC</option>
-        <option value="BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups" data-icon="https://app.solmemetics.com/smm.png">SMM</option>
+        <option value="So11111111111111111111111111111111111111112" data-icon="/sol.png">SOL</option>
+        <option value="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" data-icon="/usdc.png">USDC</option>
+        <option value="BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups" data-icon="/smm.png">SMM</option>
       </select>
       <button id="submit-suggestion" class="retry-button">Submit Suggestion</button>
     </div>
@@ -231,12 +231,21 @@
       document.getElementById("status").textContent = `Error: ${msg}. Please refresh the page.`;
     };
 
-    // Ensure Buffer is available
+    // Verify Buffer
     if (typeof window.Buffer === 'undefined') {
       console.error("Buffer is not defined. Ensure the buffer script loaded correctly.");
       document.getElementById("status").textContent = "Error: Failed to load required scripts. Please refresh the page.";
       throw new Error("Buffer not defined");
     }
+    console.log("Buffer loaded successfully:", typeof window.Buffer);
+
+    // Verify solanaWeb3
+    if (typeof solanaWeb3 === 'undefined') {
+      console.error("solanaWeb3 is not defined. Ensure the web3.js script loaded correctly.");
+      document.getElementById("status").textContent = "Error: Failed to load Solana library. Please refresh the page.";
+      throw new Error("solanaWeb3 not defined");
+    }
+    console.log("solanaWeb3 loaded successfully:", typeof solanaWeb3);
 
     const TOKEN_MINT = new solanaWeb3.PublicKey("BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups");
     const VIP_MINIMUM = 100000;
@@ -263,12 +272,13 @@
     ];
 
     const TOKEN_MAP = {
-      "So11111111111111111111111111111111111111112": { ticker: "SOL", icon: "https://app.solmemetics.com/sol.png" },
-      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": { ticker: "USDC", icon: "https://app.solmemetics.com/usdc.png" },
-      "BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups": { ticker: "SMM", icon: "https://app.solmemetics.com/smm.png" }
+      "So11111111111111111111111111111111111111112": { ticker: "SOL", icon: "/sol.png" },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": { ticker: "USDC", icon: "/usdc.png" },
+      "BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups": { ticker: "SMM", icon: "/smm.png" }
     };
 
     async function getConnection(attempt = 0) {
+      console.log("Attempting connection to RPC", attempt + 1, ":", RPC_ENDPOINTS[attempt]);
       const rpc = RPC_ENDPOINTS[attempt];
       try {
         const connection = new solanaWeb3.Connection(rpc, { commitment: "confirmed", disableRetryOnRateLimit: false });
@@ -276,7 +286,7 @@
         console.log(`Connected to RPC: ${rpc}`);
         return connection;
       } catch (err) {
-        console.error(`RPC ${rpc} failed:`, err);
+        console.error(`RPC ${rpc} failed:`, err.message);
         if (attempt < RPC_ENDPOINTS.length - 1) {
           return getConnection(attempt + 1);
         }
@@ -285,6 +295,7 @@
     }
 
     async function updateVipInfo(publicKey, connection) {
+      console.log("Updating VIP info for:", publicKey.toBase58());
       try {
         const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
           publicKey,
@@ -304,17 +315,18 @@
                      tokenBalance >= 250000 ? "Silver" :
                      tokenBalance >= 100000 ? "Bronze" : "No Rank";
         document.getElementById("vip-rank").textContent = rank;
+        console.log("VIP info updated:", { balance: tokenBalance, rank });
         return { balance: tokenBalance, rank };
       } catch (err) {
-        console.error("Failed to update VIP info:", err);
+        console.error("Failed to update VIP info:", err.message);
         statusDiv.textContent = `Error fetching balance: ${err.message}`;
         return { balance: 0, rank: "No Rank" };
       }
     }
 
     async function loadUsername(publicKey) {
+      console.log("Fetching username for:", publicKey.toBase58());
       try {
-        console.log("Fetching users for wallet:", publicKey.toBase58());
         const response = await fetch("https://smm-chat-server.onrender.com/users");
         if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
         const users = await response.json();
@@ -338,13 +350,14 @@
         }
         return username;
       } catch (err) {
-        console.error("Error loading username:", err);
+        console.error("Error loading username:", err.message);
         statusDiv.textContent = `Error loading username: ${err.message}`;
         return "Not set";
       }
     }
 
     async function populateTokenDropdown(publicKey, connection) {
+      console.log("Populating token dropdown for:", publicKey.toBase58());
       try {
         tokenSelect.innerHTML = "<option value=''>Select a token</option>";
         const balance = await connection.getBalance(publicKey);
@@ -370,17 +383,18 @@
         });
         console.log("Token dropdown populated, options:", Array.from(tokenSelect.options).map(opt => ({ value: opt.value, text: opt.text })));
       } catch (err) {
-        console.error("Error loading tokens:", err);
+        console.error("Error loading tokens:", err.message);
         statusDiv.textContent = `Error loading tokens: ${err.message}`;
       }
     }
 
     async function sendDonation(publicKey, tokenMint, amount, suggestion) {
+      console.log("sendDonation called:", { wallet: publicKey.toBase58(), token: tokenMint, amount, suggestion });
       try {
-        console.log("Sending donation:", { wallet: publicKey.toBase58(), token: tokenMint, amount, suggestion });
-        console.log("Phantom available:", window.solana, window.solana?.isPhantom);
-
-        // Validate inputs
+        console.log("Phantom status:", { available: !!window.solana, isPhantom: window.solana?.isPhantom });
+        if (!window.solana || !window.solana.isPhantom) {
+          throw new Error("Phantom wallet not detected. Please install Phantom.");
+        }
         if (!tokenMint || !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(tokenMint)) {
           throw new Error("Invalid token mint selected");
         }
@@ -390,14 +404,8 @@
         if (!suggestion || amount <= 0) {
           throw new Error("Invalid suggestion or amount");
         }
-        if (!window.solana || !window.solana.isPhantom) {
-          throw new Error("Phantom wallet not detected. Please install Phantom.");
-        }
-
-        // Initialize connection
         const connection = await getConnection();
-
-        // Fetch transaction from server
+        console.log("Sending request to /submit-suggestion");
         const response = await fetch("https://smm-chat-server.onrender.com/submit-suggestion", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -406,33 +414,24 @@
         console.log("Server response status:", response.status);
         const data = await response.json();
         console.log("Server response data:", data);
-
         if (!response.ok) {
           throw new Error(data.error || `HTTP error: ${response.status}`);
         }
         if (!data.transaction || !data.suggestionData) {
           throw new Error("Invalid response: Missing transaction or suggestion data");
         }
-
-        console.log("Received transaction from server:", data.transaction.substring(0, 20) + "...");
-
-        // Deserialize transaction
+        console.log("Deserializing transaction");
         const transactionBuffer = Buffer.from(data.transaction, "base64");
         const transaction = solanaWeb3.Transaction.from(transactionBuffer);
-
-        // Sign transaction with Phantom
-        console.log("Prompting user to sign transaction");
+        console.log("Prompting Phantom to sign transaction");
         const { signature } = await window.solana.signAndSendTransaction(transaction, {
           skipPreflight: false,
           commitment: "confirmed",
         });
         console.log("Transaction sent, signature:", signature);
-
-        // Confirm transaction
         await connection.confirmTransaction(signature, "confirmed");
         console.log("Transaction confirmed:", signature);
-
-        // Confirm suggestion
+        console.log("Confirming suggestion");
         const confirmResponse = await fetch("https://smm-chat-server.onrender.com/confirm-suggestion", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -441,38 +440,34 @@
         console.log("Confirm suggestion response status:", confirmResponse.status);
         const confirmData = await confirmResponse.json();
         console.log("Confirm suggestion response data:", confirmData);
-
         if (!confirmResponse.ok) {
           throw new Error(confirmData.error || `Confirm error: ${confirmResponse.status}`);
         }
-
         console.log("Suggestion confirmed:", confirmData);
         statusDiv.textContent = "Suggestion and donation submitted successfully!";
         return true;
       } catch (err) {
-        console.error("Error sending donation:", err);
+        console.error("Error sending donation:", err.message);
         statusDiv.textContent = `Error sending donation: ${err.message}`;
         return false;
       }
     }
 
     async function connectWebSocket(rank, userAddress) {
+      console.log("Connecting WebSocket for:", userAddress, "with rank:", rank);
       try {
         if (retryCount >= MAX_RETRIES) {
           statusDiv.textContent = "Max retry attempts reached. Please click Retry or refresh the page.";
           retryBtn.style.display = "block";
           return;
         }
-
         ws = new WebSocket("wss://smm-chat-server.onrender.com");
-
         ws.onopen = () => {
           statusDiv.textContent = "Connected to chat server!";
           ws.isAuthenticated = true;
           retryCount = 0;
           console.log("WebSocket connected");
         };
-
         ws.onmessage = (event) => {
           try {
             const msg = JSON.parse(event.data);
@@ -505,10 +500,9 @@
               }
             }
           } catch (err) {
-            console.error("Error parsing message:", err);
+            console.error("Error parsing WebSocket message:", err.message);
           }
         };
-
         ws.onclose = (e) => {
           console.log("WebSocket closed:", e.code, e.reason);
           statusDiv.textContent = `Chat server disconnected. Retrying (${retryCount + 1}/${MAX_RETRIES})...`;
@@ -520,18 +514,18 @@
             retryBtn.style.display = "block";
           }
         };
-
         ws.onerror = (e) => {
           console.error("WebSocket error:", e);
           statusDiv.textContent = "Chat server error. Retrying in 10 seconds...";
         };
       } catch (err) {
-        console.error("Error in connectWebSocket:", err);
+        console.error("Error in connectWebSocket:", err.message);
         statusDiv.textContent = `WebSocket error: ${err.message}`;
       }
     }
 
     document.getElementById("send-chat").addEventListener("click", () => {
+      console.log("Send chat button clicked");
       try {
         const input = document.getElementById("chat-input");
         const text = input.value.trim();
@@ -539,6 +533,7 @@
           statusDiv.textContent = !ws ? "No WebSocket connection." :
                                  ws.readyState !== WebSocket.OPEN ? "WebSocket not connected." :
                                  !ws.isAuthenticated ? "Not connected to chat server." : "Enter a valid message.";
+          console.log("Chat send failed:", { text, wsExists: !!ws, wsState: ws?.readyState, wsAuthenticated: ws?.isAuthenticated });
           return;
         }
         const user = window.solana?.publicKey?.toBase58() || "Anon";
@@ -548,23 +543,25 @@
         statusDiv.textContent = "Message sent!";
         console.log(`Sent message: ${rank} ${user}: ${text}`);
       } catch (err) {
-        console.error("Error sending chat:", err);
+        console.error("Error sending chat:", err.message);
         statusDiv.textContent = `Error sending chat: ${err.message}`;
       }
     });
 
     document.getElementById("chat-input").addEventListener("keypress", (e) => {
       if (e.key === "Enter") {
+        console.log("Enter key pressed in chat input");
         document.getElementById("send-chat").click();
       }
     });
 
     setUsernameBtn.addEventListener("click", async () => {
+      console.log("Set Username button clicked");
       try {
-        console.log("Set Username button clicked. Current input display:", usernameInput.style.display, "Username:", document.getElementById("username-display").textContent);
         const currentUsername = document.getElementById("username-display").textContent;
         const isAdmin = window.solana?.publicKey?.toBase58() === ADMIN_WALLET;
         const user = window.solana?.publicKey?.toBase58();
+        console.log("Username button state:", { currentUsername, isAdmin, user });
         if (!user) {
           statusDiv.textContent = "Please connect your wallet.";
           console.log("No wallet connected");
@@ -600,7 +597,7 @@
           console.log("Username set response:", data);
         }
       } catch (err) {
-        console.error("Error setting username:", err);
+        console.error("Error setting username:", err.message);
         statusDiv.textContent = `Error setting username: ${err.message}`;
         usernameInput.style.display = "none";
         setUsernameBtn.textContent = window.solana?.publicKey?.toBase58() === ADMIN_WALLET ? "Change Username" : "Set Username";
@@ -609,16 +606,18 @@
 
     usernameInput.addEventListener("keypress", (e) => {
       if (e.key === "Enter") {
+        console.log("Enter key pressed in username input");
         setUsernameBtn.click();
       }
     });
 
     document.getElementById("submit-suggestion").addEventListener("click", async () => {
+      console.log("Submit suggestion button clicked");
       try {
         const suggestion = suggestionInput.value.trim();
         const token = tokenSelect.value;
         const amount = parseFloat(donationAmount.value) || 0;
-        console.log("Submit suggestion clicked:", { suggestion, token, amount });
+        console.log("Submit suggestion inputs:", { suggestion, token, amount });
         if (!suggestion || !token || amount <= 0) {
           statusDiv.textContent = "Please enter a suggestion, select a token, and specify a valid amount.";
           console.log("Invalid suggestion inputs:", { suggestion, token, amount });
@@ -640,12 +639,13 @@
           await loadSuggestions();
         }
       } catch (err) {
-        console.error("Error submitting suggestion:", err);
+        console.error("Error submitting suggestion:", err.message);
         statusDiv.textContent = `Error submitting suggestion: ${err.message}`;
       }
     });
 
     async function loadSuggestions() {
+      console.log("Loading suggestions");
       try {
         const response = await fetch("https://smm-chat-server.onrender.com/suggestions");
         const suggestions = await response.json();
@@ -671,55 +671,52 @@
         suggestionsList.scrollTop = suggestionsList.scrollHeight;
         console.log("Loaded suggestions:", suggestions.length);
       } catch (err) {
-        console.error("Error loading suggestions:", err);
+        console.error("Error loading suggestions:", err.message);
         statusDiv.textContent = `Error loading suggestions: ${err.message}`;
       }
     }
 
     async function checkVipAccess() {
+      console.log("Checking VIP access");
       try {
         if (!window.solana || !window.solana.isPhantom) {
           statusDiv.textContent = "Phantom Wallet required. Please install Phantom.";
           retryBtn.style.display = "none";
+          alert("Phantom Wallet is required to access the VIP Zone. Please install it from https://phantom.app.");
           window.open("https://phantom.app/", "_blank");
+          console.log("No Phantom wallet detected");
           return false;
         }
 
         const provider = window.solana;
         let publicKey;
 
-        const storedPublicKey = sessionStorage.getItem("smmPublicKey");
-        const isVerified = sessionStorage.getItem("smmVipVerified") === "true";
-
+        console.log("Checking wallet connection status");
         if (window.solana.isConnected) {
           publicKey = provider.publicKey;
           console.log("Using existing wallet connection:", publicKey.toBase58());
         } else {
+          console.log("Attempting to connect wallet");
           try {
-            const resp = await provider.connect({ onlyIfTrusted: true });
+            const resp = await provider.connect();
             publicKey = resp.publicKey;
-            console.log("Silent wallet connection:", publicKey.toBase58());
-          } catch (connectErr) {
-            console.log("Silent connection failed, prompting user:", connectErr);
-            try {
-              const resp = await provider.connect();
-              publicKey = resp.publicKey;
-              console.log("User-connected wallet:", publicKey.toBase58());
-            } catch (err) {
-              console.error("Wallet connection failed:", err);
-              statusDiv.textContent = "Please connect your Phantom wallet.";
-              retryBtn.style.display = "block";
-              return false;
-            }
+            console.log("Wallet connected:", publicKey.toBase58());
+          } catch (err) {
+            console.error("Wallet connection failed:", err.message);
+            statusDiv.textContent = "Please connect your Phantom wallet.";
+            retryBtn.style.display = "block";
+            return false;
           }
         }
+
+        const storedPublicKey = sessionStorage.getItem("smmPublicKey");
+        const isVerified = sessionStorage.getItem("smmVipVerified") === "true";
 
         if (isVerified && storedPublicKey === publicKey.toBase58()) {
           console.log("VIP access verified via sessionStorage");
           statusDiv.textContent = "VIP access granted!";
         } else {
           statusDiv.textContent = `Connected: ${publicKey.toBase58().slice(0, 6)}... Checking SMM token balance...`;
-
           const connection = await getConnection();
           const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
             publicKey,
@@ -743,6 +740,7 @@
             retryBtn.style.display = "block";
             sessionStorage.removeItem("smmVipVerified");
             sessionStorage.removeItem("smmPublicKey");
+            console.log("Insufficient SMM balance:", tokenBalance);
             return false;
           }
 
@@ -751,15 +749,17 @@
           statusDiv.textContent = "VIP access granted!";
         }
 
+        console.log("Initializing UI for:", publicKey.toBase58());
         const connection = await getConnection();
         const { rank } = await updateVipInfo(publicKey, connection);
         await loadUsername(publicKey);
         await populateTokenDropdown(publicKey, connection);
         await loadSuggestions();
         connectWebSocket(rank, publicKey.toBase58().slice(0, 6));
+        console.log("UI initialization complete");
         return true;
       } catch (err) {
-        console.error("VIP access check failed:", err);
+        console.error("VIP access check failed:", err.message);
         statusDiv.textContent = `Could not verify SMM balance: ${err.message}`;
         retryBtn.style.display = "block";
         return false;
@@ -768,40 +768,42 @@
 
     document.querySelectorAll(".tab-button").forEach(button => {
       button.addEventListener("click", () => {
+        console.log("Tab button clicked:", button.dataset.tab);
         try {
           document.querySelectorAll(".tab-button").forEach(btn => btn.classList.remove("active"));
           document.querySelectorAll(".tab-content").forEach(content => content.classList.remove("active"));
           button.classList.add("active");
           document.getElementById(button.dataset.tab).classList.add("active");
         } catch (err) {
-          console.error("Error switching tab:", err);
+          console.error("Error switching tab:", err.message);
           statusDiv.textContent = `Error switching tab: ${err.message}`;
         }
       });
     });
 
     retryBtn.addEventListener("click", async () => {
+      console.log("Retry button clicked");
       try {
         retryBtn.style.display = "none";
         statusDiv.textContent = "";
         retryCount = 0;
         await checkVipAccess();
       } catch (err) {
-        console.error("Error retrying connection:", err);
+        console.error("Error retrying connection:", err.message);
         statusDiv.textContent = `Error retrying connection: ${err.message}`;
       }
     });
 
     window.addEventListener("load", async () => {
+      console.log("Page loaded, initiating VIP access check");
       try {
-        console.log("Page loaded, checking VIP access");
         const hasAccess = await checkVipAccess();
         if (!hasAccess && !retryBtn.style.display) {
           statusDiv.textContent = statusDiv.textContent || "Redirecting to main page...";
           setTimeout(() => window.location.href = "index.html", 3000);
         }
       } catch (err) {
-        console.error("Error on page load:", err);
+        console.error("Error on page load:", err.message);
         statusDiv.textContent = `Error loading page: ${err.message}`;
       }
     });
