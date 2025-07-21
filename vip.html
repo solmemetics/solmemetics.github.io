@@ -218,10 +218,13 @@
   <div id="status"></div>
   <button id="retry" class="retry-button" style="display: none;">Retry Connection</button>
 
-  <script src="https://unpkg.com/buffer@6.0.3/dist/index.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/dist/index.min.js"></script>
   <script src="https://unpkg.com/@solana/web3.js@1.98.2/lib/index.iife.min.js"></script>
-  <script>
+  <script defer>
     if (typeof window.Buffer === 'undefined') {
+      console.error("Buffer is not defined. Ensure the buffer script loaded correctly.");
+      document.getElementById("status").textContent = "Error: Failed to load required scripts. Please refresh the page.";
+    } else {
       window.Buffer = buffer.Buffer;
     }
 
@@ -308,6 +311,7 @@
         return username;
       } catch (err) {
         console.error("Error loading username:", err);
+        statusDiv.textContent = `Error loading username: ${err.message}`;
         return "Not set";
       }
     }
@@ -338,6 +342,7 @@
         });
       } catch (err) {
         console.error("Error loading tokens:", err);
+        statusDiv.textContent = `Error loading tokens: ${err.message}`;
       }
     }
 
@@ -572,6 +577,7 @@
         suggestionsList.scrollTop = suggestionsList.scrollHeight;
       } catch (err) {
         console.error("Error loading suggestions:", err);
+        statusDiv.textContent = `Error loading suggestions: ${err.message}`;
       }
     }
 
