@@ -165,6 +165,14 @@
       max-width: 100%;
       height: auto;
     }
+    /* Token icon placeholders */
+    .token-option::before {
+      content: "Ⓢ "; /* Placeholder for SOL icon */
+      margin-right: 5px;
+    }
+    .token-option-usdc::before {
+      content: "💰 "; /* Placeholder for USDC icon */
+    }
   </style>
 </head>
 <body>
@@ -212,6 +220,7 @@
     const TOKEN_MINT = new solanaWeb3.PublicKey("BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups");
     const VIP_MINIMUM = 100000;
     const ADMIN_WALLET = "Cj64jfCQ2dR5Utf62nMnmEq8fjerAk4u1mZY1Hv53QZA";
+    const DEV_WALLET = "Cj64jfCQ2dR5Utf62nMnmEq8fjerAk4u1mZY1Hv53QZA"; // Replace with actual dev wallet public key
     const statusDiv = document.getElementById("status");
     const retryBtn = document.getElementById("retry");
     const chatMessages = document.getElementById("chat-messages");
@@ -231,6 +240,13 @@
       solanaWeb3.clusterApiUrl("mainnet-beta"),
       "https://api.mainnet-beta.solana.com"
     ];
+
+    // Token mappings (mint to ticker and icon placeholder)
+    const TOKEN_MAP = {
+      "So11111111111111111111111111111111111111112": { ticker: "SOL", icon: "Ⓢ" }, // Native SOL
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": { ticker: "USDC", icon: "💰" }, // Example USDC
+      // Add more tokens as needed (e.g., "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB": { ticker: "USDT", icon: "💧" })
+    };
 
     async function getConnection(attempt = 0) {
       const rpc = RPC_ENDPOINTS[attempt];
@@ -291,24 +307,63 @@
 
     async function populateTokenDropdown(publicKey, connection) {
       try {
+        tokenSelect.innerHTML = "<option value=''>Select a token</option>";
+        // Add native SOL balance
+        const balance = await connection.getBalance(publicKey);
+        if (balance > 0) {
+          const option = document.createElement("option");
+          option.value = "So11111111111111111111111111111111111111112"; // SOL mint
+          option.className = "token-option";
+          option.textContent = `${TOKEN_MAP["So11111111111111111111111111111111111111112"].ticker} (${(balance / solanaWeb3.LAMPORTS_PER_SOL).toFixed(2)})`;
+          tokenSelect.appendChild(option);
+        }
+        // Add token accounts
         const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
           publicKey,
           { programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") }
         );
-        tokenSelect.innerHTML = "<option value=''>Select a token</option>";
         tokenAccounts.value.forEach(({ account }) => {
           const { mint, tokenAmount } = account.data.parsed.info;
-          const mintAddress = mint;
           const amount = tokenAmount.uiAmount;
-          if (amount > 0) {
+          if (amount > 0 && TOKEN_MAP[mint]) {
             const option = document.createElement("option");
-            option.value = mintAddress;
-            option.textContent = `${mintAddress.slice(0, 4)}... (${amount.toFixed(2)})`;
+            option.value = mint;
+            option.className = `token-option ${mint === "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" ? "token-option-usdc" : ""}`;
+            option.textContent = `${TOKEN_MAP[mint].ticker} (${amount.toFixed(2)})`;
             tokenSelect.appendChild(option);
           }
         });
       } catch (err) {
         console.error("Error loading tokens:", err);
+      }
+    }
+
+    async function sendDonation(publicKey, tokenMint, amount) {
+      try {
+        const connection = await getConnection();
+        const transaction = new solanaWeb3.Transaction().add(
+          tokenMint === "So11111111111111111111111111111111111111112" ?
+            solanaWeb3.SystemProgram.transfer({
+              fromPubkey: publicKey,
+              toPubkey: new solanaWeb3.PublicKey(DEV_WALLET),
+              lamports: amount * solanaWeb3.LAMPORTS_PER_SOL,
+            }) :
+            // Placeholder for token transfer (requires token account setup)
+            // This is a simulation; actual implementation needs more logic
+            new solanaWeb3.TransactionInstruction()
+        );
+        const { blockhash } = await connection.getRecentBlockhash();
+        transaction.recentBlockhash = blockhash;
+        transaction.feePayer = publicKey;
+        const signed = await window.solana.signTransaction(transaction);
+        const signature = await connection.sendRawTransaction(signed.serialize());
+        await connection.confirmTransaction(signature);
+        console.log("Donation sent, signature:", signature);
+        return true;
+      } catch (err) {
+        console.error("Error sending donation:", err);
+        statusDiv.textContent = `Error sending donation: ${err.message}`;
+        return false;
       }
     }
 
@@ -403,41 +458,41 @@
       if (e.key === "Enter") document.getElementById("send-chat").click();
     });
 
-    setUsernameBtn.addEventListener("click", async () => {
-      const username = usernameInput.value.trim();
-      if (username) {
-        const user = window.solana?.publicKey?.toBase58();
-        if (!user) {
-          statusDiv.textContent = "Please connect your wallet.";
-          return;
-        }
-        fetch("https://smm-chat-server.onrender.com/set-username", { // Replace with your Render URL
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ wallet: user, username }),
-        })
-          .then(response => {
-            if (response.ok) {
-              return response.text();
-            } else {
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
-          })
-          .then(data => {
-            document.getElementById("username-display").textContent = username;
-            statusDiv.textContent = "Username set successfully!";
-            usernameInput.style.display = "none";
-            usernameInput.value = "";
-            console.log("Username set response:", data);
-          })
-          .catch(err => {
-            console.error("Error setting username:", err);
-            statusDiv.textContent = `Error setting username: ${err.message}`;
-          });
+    setUsernameBtn.addEventListener("click", () => {
+      if (usernameInput.style.display === "none") {
+        usernameInput.style.display = "block";
+        usernameInput.focus();
       } else {
-        usernameInput.style.display = usernameInput.style.display === "none" ? "block" : "none";
-        if (usernameInput.style.display === "block") {
-          usernameInput.focus();
+        const username = usernameInput.value.trim();
+        if (username) {
+          const user = window.solana?.publicKey?.toBase58();
+          if (!user) {
+            statusDiv.textContent = "Please connect your wallet.";
+            return;
+          }
+          fetch("https://smm-chat-server.onrender.com/set-username", { // Replace with your Render URL
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ wallet: user, username }),
+          })
+            .then(response => {
+              if (response.ok) {
+                return response.text();
+              } else {
+                throw new Error(`HTTP error! status: ${response.status}`);
+              }
+            })
+            .then(data => {
+              document.getElementById("username-display").textContent = username;
+              statusDiv.textContent = "Username set successfully!";
+              usernameInput.style.display = "none";
+              usernameInput.value = "";
+              console.log("Username set response:", data);
+            })
+            .catch(err => {
+              console.error("Error setting username:", err);
+              statusDiv.textContent = `Error setting username: ${err.message}`;
+            });
         }
       }
     });
@@ -461,30 +516,33 @@
         statusDiv.textContent = "Please connect your wallet.";
         return;
       }
-      fetch("https://smm-chat-server.onrender.com/submit-suggestion", { // Replace with your Render URL
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wallet: user, suggestion, token, amount }),
-      })
-        .then(response => {
-          if (response.ok) {
-            return response.text();
-          } else {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
+      const success = await sendDonation(new solanaWeb3.PublicKey(user), token, amount);
+      if (success) {
+        fetch("https://smm-chat-server.onrender.com/submit-suggestion", { // Replace with your Render URL
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ wallet: user, suggestion, token, amount }),
         })
-        .then(data => {
-          statusDiv.textContent = "Suggestion submitted successfully!";
-          suggestionInput.value = "";
-          donationAmount.value = "";
-          tokenSelect.value = "";
-          loadSuggestions();
-          console.log("Suggestion submitted response:", data);
-        })
-        .catch(err => {
-          console.error("Error submitting suggestion:", err);
-          statusDiv.textContent = `Error submitting suggestion: ${err.message}`;
-        });
+          .then(response => {
+            if (response.ok) {
+              return response.text();
+            } else {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+          })
+          .then(data => {
+            statusDiv.textContent = "Suggestion submitted successfully!";
+            suggestionInput.value = "";
+            donationAmount.value = "";
+            tokenSelect.value = "";
+            loadSuggestions();
+            console.log("Suggestion submitted response:", data);
+          })
+          .catch(err => {
+            console.error("Error submitting suggestion:", err);
+            statusDiv.textContent = `Error submitting suggestion: ${err.message}`;
+          });
+      }
     });
 
     async function loadSuggestions() {
@@ -503,7 +561,6 @@
             deleteBtn.textContent = "❌";
             deleteBtn.onclick = () => {
               if (confirm("Are you sure you want to delete this suggestion?")) {
-                // Add deletion endpoint if needed later
                 p.remove();
               }
             };
