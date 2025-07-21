@@ -315,7 +315,6 @@
         const username = users[publicKey.toBase58()] || "Not set";
         document.getElementById("username-display").textContent = username;
         console.log("Loaded username:", username);
-        // Update button state
         if (username !== "Not set" && publicKey.toBase58() !== ADMIN_WALLET) {
           console.log("Disabling set username button for non-admin");
           setUsernameBtn.textContent = "Username Set";
@@ -363,6 +362,7 @@
             tokenSelect.appendChild(option);
           }
         });
+        console.log("Token dropdown populated, options:", tokenSelect.options.length);
       } catch (err) {
         console.error("Error loading tokens:", err);
         statusDiv.textContent = `Error loading tokens: ${err.message}`;
@@ -379,17 +379,35 @@
           body: JSON.stringify({ wallet: publicKey.toBase58(), token: tokenMint, amount, suggestion }),
         });
         const data = await response.json();
-        if (response.ok && data.transaction) {
-          const transactionBuffer = Uint8Array.from(Buffer.from(data.transaction, "base64"));
-          const transaction = solanaWeb3.Transaction.from(transactionBuffer);
-          const signed = await window.solana.signTransaction(transaction);
-          const signature = await connection.sendRawTransaction(signed.serialize());
-          await connection.confirmTransaction(signature);
-          console.log("Donation sent, signature:", signature);
-          return true;
-        } else {
-          throw new Error(data.error || "Failed to initiate donation transaction");
+        if (!response.ok) {
+          throw new Error(data.error || `HTTP error: ${response.status}`);
         }
+        if (!data.transaction || !data.suggestionData) {
+          throw new Error("Invalid response: Missing transaction or suggestion data");
+        }
+        console.log("Received transaction from server:", data.transaction.substring(0, 20) + "...");
+        const transactionBuffer = Uint8Array.from(Buffer.from(data.transaction, "base64"));
+        const transaction = solanaWeb3.Transaction.from(transactionBuffer);
+        console.log("Prompting user to sign transaction");
+        const signed = await window.solana.signTransaction(transaction);
+        console.log("Transaction signed, sending to network");
+        const signature = await connection.sendRawTransaction(signed.serialize());
+        console.log("Transaction sent, signature:", signature);
+        await connection.confirmTransaction(signature, "confirmed");
+        console.log("Transaction confirmed:", signature);
+
+        // Confirm suggestion
+        const confirmResponse = await fetch("https://smm-chat-server.onrender.com/confirm-suggestion", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...data.suggestionData, signature }),
+        });
+        const confirmData = await confirmResponse.json();
+        if (!confirmResponse.ok) {
+          throw new Error(confirmData.error || `Confirm error: ${confirmResponse.status}`);
+        }
+        console.log("Suggestion confirmed:", confirmData);
+        return true;
       } catch (err) {
         console.error("Error sending donation:", err);
         statusDiv.textContent = `Error sending donation: ${err.message}`;
@@ -549,6 +567,7 @@
       const suggestion = suggestionInput.value.trim();
       const token = tokenSelect.value;
       const amount = parseFloat(donationAmount.value) || 0;
+      console.log("Submit suggestion clicked:", { suggestion, token, amount });
       if (!suggestion || !token || amount <= 0) {
         statusDiv.textContent = "Please enter a suggestion, select a token, and specify a valid amount.";
         console.log("Invalid suggestion inputs:", { suggestion, token, amount });
@@ -595,6 +614,7 @@
           suggestionsList.appendChild(p);
         });
         suggestionsList.scrollTop = suggestionsList.scrollHeight;
+        console.log("Loaded suggestions:", suggestions.length);
       } catch (err) {
         console.error("Error loading suggestions:", err);
         statusDiv.textContent = `Error loading suggestions: ${err.message}`;
