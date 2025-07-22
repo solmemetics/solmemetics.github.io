@@ -248,7 +248,9 @@
       statusDiv.textContent = "Error: Solana Web3 library failed to load. Please refresh the page.";
       console.error("solanaWeb3 is not defined");
       retryBtn.style.display = "block";
-      return;
+      // Skip Solana-dependent initialization but allow other functionality
+    } else {
+      console.log("Solana Web3 loaded successfully");
     }
 
     // Tab functionality
@@ -262,19 +264,20 @@
       });
     });
 
-    // Initialize WebSocket connection
-    function connectWebSocket() {
+    // Initialize WebSocket connection with exponential backoff
+    function connectWebSocket(retryCount = 0) {
       ws = new WebSocket(WEBSOCKET_URL);
       
       ws.onopen = () => {
         console.log("WebSocket connected");
         statusDiv.textContent = "Chat server connected";
-        fetchChatHistory(); // Fetch recent messages on connect
+        fetchChatHistory();
       };
 
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          console.log("WebSocket message received:", data);
           if (data.type === "chat") {
             addChatMessage(data);
           } else if (data.type === "suggestion") {
@@ -289,7 +292,8 @@
       ws.onclose = () => {
         console.log("WebSocket disconnected");
         statusDiv.textContent = "Chat server disconnected. Reconnecting...";
-        setTimeout(connectWebSocket, 5000);
+        const delay = Math.min(1000 * Math.pow(2, retryCount), 30000); // Exponential backoff, max 30s
+        setTimeout(() => connectWebSocket(retryCount + 1), delay);
       };
 
       ws.onerror = (error) => {
@@ -385,11 +389,12 @@
       return "No Rank";
     }
 
-    async function fetchUserData(publicKey) {
+    async function fetchUserData(publicKey, retryCount = 0) {
       try {
         const response = await fetch(`${BACKEND_URL}/users?publicKey=${publicKey}`);
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+          const errorText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
         const userData = await response.json();
         console.log('User data:', userData);
@@ -398,8 +403,13 @@
         document.getElementById("set-username-btn").textContent = username === "Not set" ? "Set Username" : "Change Username";
       } catch (error) {
         console.error('Error fetching user data:', error);
-        statusDiv.textContent = `Error fetching user data: ${error.message}`;
-        document.getElementById("username-display").textContent = "Not set";
+        if (retryCount < 3) {
+          statusDiv.textContent = `Retrying user data fetch (${retryCount + 1}/3)...`;
+          setTimeout(() => fetchUserData(publicKey, retryCount + 1), 2000);
+        } else {
+          statusDiv.textContent = `Error fetching user data: ${error.message}`;
+          document.getElementById("username-display").textContent = "Not set";
+        }
       }
     }
 
@@ -416,7 +426,7 @@
         messages.forEach(addChatMessage);
       } catch (error) {
         console.error('Error fetching chat history:', error);
-        statusDiv.textContent = `Error fetching chat history: ${error.message}`;
+        statusDiv.textContent = `Error fetching chat history: ${error.message}. Real-time chat still available.`;
       }
     }
 
@@ -442,7 +452,8 @@
       const messageElement = document.createElement("p");
       const timestamp = new Date(data.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
       const displayName = data.username || (data.publicKey ? data.publicKey.slice(0, 8) + '...' : 'Anonymous');
-      messageElement.innerHTML = `<span class="rank-${data.rank.toLowerCase()}">${data.rank}: ${displayName}</span> (${timestamp}): ${data.message}`;
+      const rank = data.rank || "No Rank";
+      messageElement.innerHTML = `<span class="rank-${rank.toLowerCase()}">${rank}: ${displayName}</span> (${timestamp}): ${data.message}`;
       chatMessages.appendChild(messageElement);
       chatMessages.scrollTop = chatMessages.scrollHeight;
     }
@@ -452,7 +463,7 @@
       const suggestionElement = document.createElement("p");
       const timestamp = new Date(data.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
       const displayName = data.username || (data.publicKey ? data.publicKey.slice(0, 8) + '...' : 'Anonymous');
-      const tokenName = data.token.includes("So111") ? "SOL" : data.token.includes("EPjF") ? "USDC" : "SMM";
+      const tokenName = data.token && data.token.includes("So111") ? "SOL" : data.token && data.token.includes("EPjF") ? "USDC" : "SMM";
       suggestionElement.innerHTML = `${displayName} (${timestamp}): ${data.suggestion} [${tokenName}, ${data.amount}]`;
       suggestionsList.appendChild(suggestionElement);
       suggestionsList.scrollTop = suggestionsList.scrollHeight;
@@ -484,15 +495,14 @@
           const username = usernameInput.value.trim();
           if (username) {
             try {
-              const message = `Set username to ${username} for ${publicKey}`;
-              const signature = await signMessage(message);
               const response = await fetch(`${BACKEND_URL}/set-username`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ publicKey, username, signature })
+                body: JSON.stringify({ publicKey, username })
               });
               if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
               }
               document.getElementById("username-display").textContent = username;
               usernameInput.style.display = "none";
@@ -517,15 +527,13 @@
           try {
             const username = document.getElementById("username-display").textContent;
             const timestamp = new Date().toISOString();
-            const signature = await signMessage(`Chat: ${message} at ${timestamp}`);
             ws.send(JSON.stringify({
               type: "chat",
               publicKey,
               username: username !== "Not set" ? username : null,
               rank,
               message,
-              timestamp,
-              signature
+              timestamp
             }));
             chatInput.value = "";
             statusDiv.textContent = "Message sent!";
@@ -557,8 +565,6 @@
         if (suggestion && amount > 0 && token) {
           try {
             const timestamp = new Date().toISOString();
-            const message = `Suggestion: ${suggestion}, Amount: ${amount} ${token}, Time: ${timestamp}`;
-            const signature = await signMessage(message);
             const username = document.getElementById("username-display").textContent;
             const response = await fetch(`${BACKEND_URL}/submit-suggestion`, {
               method: 'POST',
@@ -570,8 +576,7 @@
                 suggestion,
                 amount,
                 token,
-                timestamp,
-                signature
+                timestamp
               })
             });
             if (!response.ok) {
@@ -601,9 +606,7 @@
     window.addEventListener("load", async () => {
       console.log('Page loaded, starting VIP zone...');
       setTimeout(async () => {
-        if (typeof solanaWeb3 !== 'undefined') {
-          await checkPhantomWallet();
-        }
+        await checkPhantomWallet();
       }, 1000);
     });
 
