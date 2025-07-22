@@ -178,28 +178,28 @@
   </style>
   <!-- Load bundled buffer.js -->
   <script src="/js/buffer.js"></script>
-<script>
-  try {
-    console.log('require available:', typeof require);
-    const bufferModule = require('buffer');
-    console.log('bufferModule:', bufferModule);
-    if (bufferModule && bufferModule.Buffer) {
-      window.Buffer = bufferModule.Buffer;
-      console.log('Buffer loaded from bundle:', typeof window.Buffer, 'Buffer.from:', typeof window.Buffer.from);
+  <script>
+    // Ensure Buffer is attached to window
+    try {
+      if (typeof require === 'function' && require('buffer')) {
+        window.Buffer = require('buffer').Buffer;
+        console.log('Buffer loaded from bundle:', typeof window.Buffer, 'Buffer.from:', typeof window.Buffer.from);
+      } else {
+        throw new Error('Buffer module not found in bundle');
+      }
+      // Lock window.Buffer to prevent overwrites
       Object.defineProperty(window, 'Buffer', {
         value: window.Buffer,
         writable: false,
         configurable: false
       });
-    } else {
-      throw new Error('Buffer module not found in bundle');
+    } catch (err) {
+      console.error('Error loading Buffer from bundle:', err.message);
+      document.getElementById('status')?.textContent = 'Error: Failed to load Buffer library. Please refresh the page.';
     }
-  } catch (err) {
-    console.error('Error loading Buffer from bundle:', err.message);
-    document.getElementById('status')?.textContent = 'Error: Failed to load Buffer library. Please refresh the page.';
-  }
-</script>
-<script src="https://unpkg.com/@solana/web3.js@1.98.2/lib/index.iife.min.js"></script>
+  </script>
+  <!-- Load Solana web3.js -->
+  <script src="https://unpkg.com/@solana/web3.js@1.98.2/lib/index.iife.min.js"></script>
 </head>
 <body>
   <img src="your-image.png" alt="SMM Logo" />
