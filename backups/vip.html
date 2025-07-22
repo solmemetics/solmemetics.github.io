@@ -176,6 +176,14 @@
       margin-right: 5px;
     }
   </style>
+  <!-- Load buffer -->
+  <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.min.js"></script>
+  <script>
+    // Assign buffer.Buffer to global window.Buffer
+    window.Buffer = buffer.Buffer;
+  </script>
+  <!-- Load Solana web3.js -->
+  <script src="https://unpkg.com/@solana/web3.js@1.98.2/lib/index.iife.min.js"></script>
 </head>
 <body>
   <img src="your-image.png" alt="SMM Logo" />
@@ -222,12 +230,7 @@
   <div id="status"></div>
   <button id="retry" class="retry-button" style="display: none;">Retry Connection</button>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/buffer/6.0.3/buffer.min.js"></script>
-  <script src="https://unpkg.com/@solana/web3.js@1.98.2/lib/index.iife.min.js"></script>
   <script>
-    // Explicitly set window.Buffer
-    window.Buffer = window.Buffer || window.buffer.Buffer;
-
     // Global error handler
     window.onerror = (msg, url, line, col, error) => {
       console.error(`Uncaught error: ${msg} at ${url}:${line}:${col}`, error);
@@ -533,7 +536,7 @@
         }
         console.log("Deserializing transaction");
         try {
-          // Re-verify Buffer right before use
+          // Re-verify Buffer right before deserialization
           console.log("Re-verifying Buffer before deserialization:", { Buffer: typeof window.Buffer, BufferFrom: typeof window.Buffer.from });
           if (typeof window.Buffer.from !== 'function') {
             throw new Error("Buffer.from is not a function at transaction deserialization.");
