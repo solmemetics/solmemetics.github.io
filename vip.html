@@ -333,7 +333,8 @@
           ws.isAuthenticated = true;
           retryCount = 0;
           console.log("WebSocket connected");
-          fetchChatMessages(); // Load initial messages
+          // Clear chat messages on connect
+          chatMessages.innerHTML = "<p>Chat connected. Waiting for messages...</p>";
           // Update send-chat handler
           document.getElementById("send-chat").replaceWith(document.getElementById("send-chat").cloneNode(true));
           document.getElementById("send-chat").addEventListener("click", () => {
@@ -350,7 +351,8 @@
               }
               const user = window.solana?.publicKey?.toBase58() || "Anon";
               const rank = document.getElementById("vip-rank").textContent;
-              ws.send(JSON.stringify({ type: "chat", user, rank, text, timestamp: new Date().toISOString() }));
+              const message = { type: "chat", user, rank, text, timestamp: new Date().toISOString() };
+              ws.send(JSON.stringify(message));
               input.value = "";
               statusDiv.textContent = "Message sent!";
               console.log(`Sent message: ${rank} ${user}: ${text}`);
@@ -362,9 +364,14 @@
         };
         ws.onmessage = (event) => {
           try {
+            console.log("Raw WebSocket message:", event.data);
             const msg = JSON.parse(event.data);
-            console.log("WebSocket message received:", msg);
+            console.log("Parsed WebSocket message:", msg);
             if (msg.type === "chat" && msg.user && msg.rank && msg.text && msg.timestamp) {
+              // Clear initial placeholder if present
+              if (chatMessages.children.length === 1 && chatMessages.children[0].textContent === "Chat connected. Waiting for messages...") {
+                chatMessages.innerHTML = "";
+              }
               const index = chatMessages.children.length;
               const date = new Date(msg.timestamp);
               const timeString = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
@@ -391,6 +398,11 @@
                 messages[msg.index].remove();
                 console.log(`Deleted message at index ${msg.index}`);
               }
+              if (chatMessages.children.length === 0) {
+                chatMessages.innerHTML = "<p>No messages available.</p>";
+              }
+            } else {
+              console.warn("Ignoring invalid WebSocket message:", msg);
             }
           } catch (err) {
             console.error("Error parsing WebSocket message:", err.message);
@@ -418,61 +430,6 @@
       }
     }
 
-    // Fetch chat messages from messages.json
-    async function fetchChatMessages() {
-      console.log("Fetching chat messages from messages.json");
-      try {
-        const response = await fetch(`${BACKEND_URL}/messages.json`, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-          cache: "no-cache"
-        });
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`HTTP error: ${response.status} - ${errorText}`);
-        }
-        const messages = await response.json();
-        console.log("Loaded messages:", messages);
-        if (!Array.isArray(messages)) {
-          throw new Error("Invalid messages format: Expected an array");
-        }
-        chatMessages.innerHTML = "";
-        if (messages.length === 0) {
-          chatMessages.innerHTML = "<p>No messages available.</p>";
-          console.log("No messages found in messages.json");
-        }
-        messages.forEach((msg, index) => {
-          if (msg.type === "chat" && msg.user && msg.rank && msg.text && msg.timestamp) {
-            const date = new Date(msg.timestamp);
-            const timeString = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
-            const p = document.createElement("p");
-            p.innerHTML = `<span class="rank-${msg.rank.toLowerCase()}">${msg.rank}: ${msg.user}</span> (${timeString}): ${msg.text}`;
-            if (window.solana?.publicKey?.toBase58() === ADMIN_WALLET) {
-              const deleteBtn = document.createElement("span");
-              deleteBtn.className = "delete-btn";
-              deleteBtn.textContent = "❌";
-              deleteBtn.onclick = () => {
-                if (confirm("Are you sure you want to delete this message?")) {
-                  ws.send(JSON.stringify({ type: "delete", index }));
-                  p.remove();
-                }
-              };
-              p.appendChild(deleteBtn);
-            }
-            chatMessages.appendChild(p);
-          } else {
-            console.warn("Skipping invalid message at index", index, ":", msg);
-          }
-        });
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-        console.log(`Displayed ${chatMessages.children.length} messages`);
-      } catch (err) {
-        console.error("Error fetching chat messages:", err.message);
-        statusDiv.textContent = `Error loading chat messages: ${err.message}`;
-        chatMessages.innerHTML = "<p>Failed to load messages. Please try again later.</p>";
-      }
-    }
-
     // Submit suggestion
     async function submitSuggestion(publicKey, suggestion) {
       console.log("Submitting suggestion:", { wallet: publicKey, suggestion });
@@ -480,11 +437,10 @@
         if (!suggestion) {
           throw new Error("Please enter a suggestion.");
         }
-        // Send dummy token and amount to satisfy current backend
-        const response = await fetch(`${BACKEND_URL}/submit-suggestion`, {
+        const response = await fetch(`${BACKEND_URL}/submit-free-suggestion`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ wallet: publicKey, suggestion, token: "none", amount: 0 }),
+          body: JSON.stringify({ wallet: publicKey, suggestion }),
         });
         if (!response.ok) {
           const errorText = await response.text();
