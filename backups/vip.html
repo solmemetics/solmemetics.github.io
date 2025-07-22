@@ -178,7 +178,7 @@
   </style>
 </head>
 <body>
-  <img src="your-image.png" alt="SMM Logo" />
+  <img src="/smm.png" alt="SMM Logo" />
   <h1>Welcome to the SMM VIP Zone</h1>
   <p>Building new things here every few days.</p>
 
@@ -222,7 +222,7 @@
   <div id="status"></div>
   <button id="retry" class="retry-button" style="display: none;">Retry Connection</button>
 
-  <script src="https://unpkg.com/buffer@6.0.3/index.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.min.js"></script>
   <script src="https://unpkg.com/@solana/web3.js@1.98.2/lib/index.iife.min.js"></script>
   <script defer>
     // Global error handler
@@ -231,24 +231,13 @@
       document.getElementById("status").textContent = `Error: ${msg}. Please refresh the page.`;
     };
 
-    // Fallback Buffer implementation
-    if (typeof window.Buffer === 'undefined') {
-      console.warn("Buffer not loaded from CDN, using fallback implementation");
-      window.Buffer = {
-        from: (data, encoding) => {
-          if (encoding === 'base64') {
-            const binary = atob(data);
-            const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) {
-              bytes[i] = binary.charCodeAt(i);
-            }
-            return bytes;
-          }
-          return new Uint8Array(data);
-        }
-      };
+    // Verify Buffer
+    if (typeof window.Buffer === 'undefined' || typeof window.Buffer.from !== 'function') {
+      console.error("Buffer or Buffer.from is not defined. Donation functionality may not work.");
+      document.getElementById("status").textContent = "Error: Failed to load Buffer library. Please refresh the page.";
+    } else {
+      console.log("Buffer initialized:", typeof window.Buffer, "Buffer.from:", typeof window.Buffer.from);
     }
-    console.log("Buffer initialized:", typeof window.Buffer);
 
     // Verify solanaWeb3
     if (typeof solanaWeb3 === 'undefined') {
@@ -519,6 +508,7 @@
         if (!suggestion || amount <= 0) {
           throw new Error("Invalid suggestion or amount");
         }
+        console.log("Buffer status:", { Buffer: typeof window.Buffer, BufferFrom: typeof window.Buffer.from });
         const connection = await getConnection();
         console.log("Sending request to /submit-suggestion");
         const response = await fetch("https://smm-chat-server.onrender.com/submit-suggestion", {
@@ -536,33 +526,40 @@
           throw new Error("Invalid response: Missing transaction or suggestion data");
         }
         console.log("Deserializing transaction");
-        const transactionBuffer = Buffer.from(data.transaction, "base64");
-        const transaction = solanaWeb3.Transaction.from(transactionBuffer);
-        console.log("Prompting Phantom to sign transaction");
-        const { signature } = await window.solana.signAndSendTransaction(transaction, {
-          skipPreflight: false,
-          commitment: "confirmed",
-        });
-        console.log("Transaction sent, signature:", signature);
-        await connection.confirmTransaction(signature, "confirmed");
-        console.log("Transaction confirmed:", signature);
-        console.log("Confirming suggestion");
-        const confirmResponse = await fetch("https://smm-chat-server.onrender.com/confirm-suggestion", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...data.suggestionData, signature }),
-        });
-        console.log("Confirm suggestion response status:", confirmResponse.status);
-        const confirmData = await confirmResponse.json();
-        console.log("Confirm suggestion response data:", confirmData);
-        if (!confirmResponse.ok) {
-          throw new Error(confirmData.error || `Confirm error: ${confirmResponse.status}`);
+        try {
+          const transactionBuffer = Buffer.from(data.transaction, "base64");
+          console.log("Transaction buffer created:", transactionBuffer.length, "bytes");
+          const transaction = solanaWeb3.Transaction.from(transactionBuffer);
+          console.log("Transaction deserialized:", transaction);
+          console.log("Prompting Phantom to sign transaction");
+          const { signature } = await window.solana.signAndSendTransaction(transaction, {
+            skipPreflight: false,
+            commitment: "confirmed",
+          });
+          console.log("Transaction sent, signature:", signature);
+          await connection.confirmTransaction(signature, "confirmed");
+          console.log("Transaction confirmed:", signature);
+          console.log("Confirming suggestion");
+          const confirmResponse = await fetch("https://smm-chat-server.onrender.com/confirm-suggestion", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...data.suggestionData, signature }),
+          });
+          console.log("Confirm suggestion response status:", confirmResponse.status);
+          const confirmData = await confirmResponse.json();
+          console.log("Confirm suggestion response data:", confirmData);
+          if (!confirmResponse.ok) {
+            throw new Error(confirmData.error || `Confirm error: ${confirmResponse.status}`);
+          }
+          console.log("Suggestion confirmed:", confirmData);
+          statusDiv.textContent = "Suggestion and donation submitted successfully!";
+          return true;
+        } catch (err) {
+          console.error("Error in transaction processing:", err.message, err.stack);
+          throw new Error(`Transaction error: ${err.message}`);
         }
-        console.log("Suggestion confirmed:", confirmData);
-        statusDiv.textContent = "Suggestion and donation submitted successfully!";
-        return true;
       } catch (err) {
-        console.error("Error sending donation:", err.message);
+        console.error("Error sending donation:", err.message, err.stack);
         statusDiv.textContent = `Error sending donation: ${err.message}`;
         return false;
       }
