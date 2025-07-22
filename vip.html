@@ -422,15 +422,27 @@
     async function fetchChatMessages() {
       console.log("Fetching chat messages from messages.json");
       try {
-        const response = await fetch(`${BACKEND_URL}/messages.json`);
+        const response = await fetch(`${BACKEND_URL}/messages.json`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-cache"
+        });
         if (!response.ok) {
-          throw new Error(`HTTP error: ${response.status}`);
+          const errorText = await response.text();
+          throw new Error(`HTTP error: ${response.status} - ${errorText}`);
         }
         const messages = await response.json();
         console.log("Loaded messages:", messages);
+        if (!Array.isArray(messages)) {
+          throw new Error("Invalid messages format: Expected an array");
+        }
         chatMessages.innerHTML = "";
+        if (messages.length === 0) {
+          chatMessages.innerHTML = "<p>No messages available.</p>";
+          console.log("No messages found in messages.json");
+        }
         messages.forEach((msg, index) => {
-          if (msg.user && msg.rank && msg.text && msg.timestamp) {
+          if (msg.type === "chat" && msg.user && msg.rank && msg.text && msg.timestamp) {
             const date = new Date(msg.timestamp);
             const timeString = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
             const p = document.createElement("p");
@@ -448,12 +460,16 @@
               p.appendChild(deleteBtn);
             }
             chatMessages.appendChild(p);
+          } else {
+            console.warn("Skipping invalid message at index", index, ":", msg);
           }
         });
         chatMessages.scrollTop = chatMessages.scrollHeight;
+        console.log(`Displayed ${chatMessages.children.length} messages`);
       } catch (err) {
         console.error("Error fetching chat messages:", err.message);
         statusDiv.textContent = `Error loading chat messages: ${err.message}`;
+        chatMessages.innerHTML = "<p>Failed to load messages. Please try again later.</p>";
       }
     }
 
@@ -464,10 +480,11 @@
         if (!suggestion) {
           throw new Error("Please enter a suggestion.");
         }
+        // Send dummy token and amount to satisfy current backend
         const response = await fetch(`${BACKEND_URL}/submit-suggestion`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ wallet: publicKey, suggestion }),
+          body: JSON.stringify({ wallet: publicKey, suggestion, token: "none", amount: 0 }),
         });
         if (!response.ok) {
           const errorText = await response.text();
@@ -490,10 +507,16 @@
       try {
         const response = await fetch(`${BACKEND_URL}/suggestions`);
         if (!response.ok) {
-          throw new Error(`HTTP error: ${response.status}`);
+          const errorText = await response.text();
+          throw new Error(`HTTP error: ${response.status} - ${errorText}`);
         }
         const suggestions = await response.json();
         suggestionsList.innerHTML = "";
+        if (!Array.isArray(suggestions) || suggestions.length === 0) {
+          suggestionsList.innerHTML = "<p>No suggestions available.</p>";
+          console.log("No suggestions found");
+          return;
+        }
         suggestions.forEach((sug, index) => {
           const date = new Date(sug.timestamp);
           const timeString = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
@@ -518,6 +541,7 @@
       } catch (err) {
         console.error("Error loading suggestions:", err.message);
         statusDiv.textContent = `Error loading suggestions: ${err.message}`;
+        suggestionsList.innerHTML = "<p>Failed to load suggestions. Please try again later.</p>";
       }
     }
 
@@ -576,7 +600,8 @@
       try {
         const response = await fetch(`${BACKEND_URL}/users`);
         if (!response.ok) {
-          throw new Error(`HTTP error: ${response.status}`);
+          const errorText = await response.text();
+          throw new Error(`HTTP error: ${response.status} - ${errorText}`);
         }
         const users = await response.json();
         const username = users[publicKey.toBase58()] || "Not set";
