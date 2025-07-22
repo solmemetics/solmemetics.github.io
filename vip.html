@@ -179,18 +179,40 @@
   <!-- Load buffer with fallback -->
   <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.min.js"></script>
   <script>
-    if (typeof window.buffer === 'undefined') {
-      document.write('<script src="https://unpkg.com/buffer@6.0.3/index.js"></script>');
+    function loadFallbackScript(src) {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error(`Failed to load fallback script: ${src}`));
+        document.head.appendChild(script);
+      });
     }
-  </script>
-  <script>
-    console.log('buffer:', typeof buffer, buffer);
-    Object.defineProperty(window, 'Buffer', {
-      value: buffer.Buffer,
-      writable: false,
-      configurable: false
-    });
-    console.log('window.Buffer:', typeof window.Buffer, 'Buffer.from:', typeof window.Buffer.from);
+
+    (async () => {
+      if (typeof window.buffer === 'undefined') {
+        console.warn('Primary buffer CDN failed, attempting fallback...');
+        try {
+          await loadFallbackScript('https://unpkg.com/buffer@6.0.3/index.js');
+          console.log('Fallback buffer loaded successfully');
+        } catch (err) {
+          console.error(err.message);
+          document.getElementById('status')?.textContent = 'Error: Failed to load Buffer library fallback. Please refresh the page.';
+        }
+      }
+      console.log('buffer:', typeof buffer, buffer);
+      if (typeof buffer !== 'undefined' && buffer.Buffer) {
+        Object.defineProperty(window, 'Buffer', {
+          value: buffer.Buffer,
+          writable: false,
+          configurable: false
+        });
+        console.log('window.Buffer:', typeof window.Buffer, 'Buffer.from:', typeof window.Buffer.from);
+      } else {
+        console.error('Buffer not available after loading attempts.');
+        document.getElementById('status')?.textContent = 'Error: Buffer library not available. Please refresh the page.';
+      }
+    })();
   </script>
   <!-- Load Solana web3.js -->
   <script src="https://unpkg.com/@solana/web3.js@1.98.2/lib/index.iife.min.js"></script>
