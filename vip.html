@@ -177,14 +177,11 @@
     }
   </style>
   <!-- Load bundled buffer.js -->
-  <script src="/js/buffer.js"></script>
+  <script src="buffer.js"></script>
 <script>
   try {
-    console.log('require available:', typeof require);
-    const bufferModule = require('buffer');
-    console.log('bufferModule:', bufferModule);
-    if (bufferModule && bufferModule.Buffer) {
-      window.Buffer = bufferModule.Buffer;
+    if (typeof buffer !== 'undefined' && buffer.Buffer) {
+      window.Buffer = buffer.Buffer;
       console.log('Buffer loaded from bundle:', typeof window.Buffer, 'Buffer.from:', typeof window.Buffer.from);
       Object.defineProperty(window, 'Buffer', {
         value: window.Buffer,
