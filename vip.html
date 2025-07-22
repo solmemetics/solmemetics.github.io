@@ -180,11 +180,12 @@
   <script src="/js/buffer.js"></script>
   <script>
     // Load Buffer robustly
+    console.log('Attempting to load buffer.js');
     try {
       if (typeof buffer !== 'undefined' && buffer.Buffer && typeof buffer.Buffer.from === 'function') {
         window.Buffer = buffer.Buffer;
         console.log('Buffer loaded from bundle:', typeof window.Buffer, 'Buffer.from:', typeof window.Buffer.from);
-        console.log('Test Buffer.from:', window.Buffer.from('test', 'utf8').toString('hex')); // Debug
+        console.log('Test Buffer.from:', window.Buffer.from('test', 'utf8').toString('hex')); // Should log '74657374'
         Object.defineProperty(window, 'Buffer', {
           value: window.Buffer,
           writable: false,
@@ -195,7 +196,11 @@
       }
     } catch (err) {
       console.error('Error loading Buffer from bundle:', err.message);
-      document.getElementById('status') ? document.getElementById('status').textContent = 'Error: Failed to load Buffer library. Please refresh the page.' : console.warn('Status div not yet available');
+      if (document.getElementById('status')) {
+        document.getElementById('status').textContent = 'Error: Failed to load Buffer library. Please refresh the page.';
+      } else {
+        console.warn('Status div not yet available for Buffer error');
+      }
     }
   </script>
   <script src="https://unpkg.com/@solana/web3.js@1.98.2/lib/index.iife.min.js"></script>
