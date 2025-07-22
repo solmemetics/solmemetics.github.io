@@ -163,50 +163,25 @@
     .rank-gold { color: #ffd700; }
     .rank-platinum { color: #e5e4e2; }
     .rank-rhodium { color: #b9f2ff; }
-    img {
+    .logo {
       display: block;
       margin: 0 auto 20px auto;
-      max-width: 100%;
+      max-width: 100px;
       height: auto;
     }
-    .token-option img {
-      width: 16px;
-      height: 16px;
-      vertical-align: middle;
-      margin-right: 5px;
+    .error-message {
+      color: #ff4444;
+      background: rgba(255, 68, 68, 0.1);
+      padding: 10px;
+      border-radius: 5px;
+      margin: 10px 0;
     }
   </style>
-  <!-- Load bundled buffer.js -->
-  <script src="/js/buffer.js"></script>
-  <script>
-    // Load Buffer robustly
-    console.log('Attempting to load buffer.js');
-    try {
-      if (typeof buffer !== 'undefined' && buffer.Buffer && typeof buffer.Buffer.from === 'function') {
-        window.Buffer = buffer.Buffer;
-        console.log('Buffer loaded from bundle:', typeof window.Buffer, 'Buffer.from:', typeof window.Buffer.from);
-        console.log('Test Buffer.from:', window.Buffer.from('test', 'utf8').toString('hex')); // Should log '74657374'
-        Object.defineProperty(window, 'Buffer', {
-          value: window.Buffer,
-          writable: false,
-          configurable: false
-        });
-      } else {
-        throw new Error('Buffer module not found or invalid in bundle');
-      }
-    } catch (err) {
-      console.error('Error loading Buffer from bundle:', err.message);
-      if (document.getElementById('status')) {
-        document.getElementById('status').textContent = 'Error: Failed to load Buffer library. Please refresh the page.';
-      } else {
-        console.warn('Status div not yet available for Buffer error');
-      }
-    }
-  </script>
-  <script src="https://unpkg.com/@solana/web3.js@1.98.2/lib/index.iife.min.js"></script>
 </head>
 <body>
-  <img src="/images/smm.png" alt="SMM Logo" />
+  <!-- Using a placeholder for the logo since the original path may not exist -->
+  <div class="logo" style="width: 100px; height: 60px; background: linear-gradient(45deg, #ff0000, #cc0000); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white;">SMM</div>
+  
   <h1>Welcome to the SMM VIP Zone</h1>
   <p>Building new things here every few days.</p>
 
@@ -225,6 +200,7 @@
       <input id="username-input" type="text" placeholder="Set username...">
     </div>
   </div>
+
   <div id="chat" class="tab-content">
     <div id="chat-container">
       <div id="chat-messages"></div>
@@ -232,6 +208,7 @@
       <button id="send-chat" class="retry-button">Send</button>
     </div>
   </div>
+
   <div id="suggestions" class="tab-content">
     <div id="suggestions-container">
       <div id="suggestions-list"></div>
@@ -239,615 +216,256 @@
       <input id="donation-amount" type="number" placeholder="Donation amount..." min="0">
       <select id="token-select">
         <option value="">Select a token</option>
-        <option value="So11111111111111111111111111111111111111112" data-icon="/images/sol.png">SOL</option>
-        <option value="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" data-icon="/images/usdc.png">USDC</option>
-        <option value="BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups" data-icon="/images/smm.png">SMM</option>
+        <option value="So11111111111111111111111111111111111111112">SOL</option>
+        <option value="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v">USDC</option>
+        <option value="BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups">SMM</option>
       </select>
       <button id="submit-suggestion" class="retry-button">Submit Suggestion</button>
     </div>
   </div>
 
-  <div id="status"></div>
+  <div id="status">Checking wallet connection...</div>
   <button id="retry" class="retry-button" style="display: none;">Retry Connection</button>
 
+  <!-- Load Solana Web3 -->
+  <script src="https://unpkg.com/@solana/web3.js@1.98.2/lib/index.iife.min.js"></script>
+
   <script>
-    // Global error handler
-    window.onerror = (msg, url, line, col, error) => {
-      console.error(`Uncaught error: ${msg} at ${url}:${line}:${col}`, error);
-      document.getElementById("status").textContent = `Error: ${msg}. Please refresh the page.`;
-    };
-
-    // Verify Buffer
-    if (typeof window.Buffer === 'undefined' || typeof window.Buffer.from !== 'function') {
-      console.error("Buffer or Buffer.from is not defined. Donation functionality may not work.");
-      document.getElementById("status").textContent = "Error: Failed to load Buffer library. Please refresh the page.";
-    } else {
-      console.log("Buffer initialized:", typeof window.Buffer, "Buffer.from:", typeof window.Buffer.from);
-    }
-
-    // Verify solanaWeb3
-    if (typeof solanaWeb3 === 'undefined') {
-      console.error("solanaWeb3 is not defined. Ensure the web3.js script loaded correctly.");
-      document.getElementById("status").textContent = "Error: Failed to load Solana library. Please refresh the page.";
-      throw new Error("solanaWeb3 not defined");
-    }
-    console.log("solanaWeb3 loaded successfully:", typeof solanaWeb3);
-
-    // Attach button event listeners early
-    console.log("Attaching button event listeners");
+    // Simplified VIP Zone Script
+    console.log('VIP Zone initializing...');
+    
+    // Constants
+    const TOKEN_MINT_ADDRESS = "BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups";
+    const VIP_MINIMUM = 100000;
+    const ADMIN_WALLET = "Hs7LzaMG6vrhfnHmJXhPx98uyYyEscdXT93dLKKxWQYF";
+    
+    // DOM elements
     const statusDiv = document.getElementById("status");
     const retryBtn = document.getElementById("retry");
-    const chatMessages = document.getElementById("chat-messages");
-    const suggestionsList = document.getElementById("suggestions-list");
-    const setUsernameBtn = document.getElementById("set-username-btn");
-    const usernameInput = document.getElementById("username-input");
-    const suggestionInput = document.getElementById("suggestion-input");
-    const tokenSelect = document.getElementById("token-select");
-    const donationAmount = document.getElementById("donation-amount");
+    
+    // Check if Solana Web3 is loaded
+    if (typeof solanaWeb3 === 'undefined') {
+      statusDiv.textContent = "Error: Solana Web3 library failed to load. Please refresh the page.";
+      console.error("solanaWeb3 is not defined");
+      retryBtn.style.display = "block";
+    } else {
+      console.log("Solana Web3 loaded successfully");
+    }
 
+    // Tab functionality
     document.querySelectorAll(".tab-button").forEach(button => {
       button.addEventListener("click", () => {
-        console.log("Tab button clicked:", button.dataset.tab);
-        try {
-          document.querySelectorAll(".tab-button").forEach(btn => btn.classList.remove("active"));
-          document.querySelectorAll(".tab-content").forEach(content => content.classList.remove("active"));
-          button.classList.add("active");
-          document.getElementById(button.dataset.tab).classList.add("active");
-        } catch (err) {
-          console.error("Error switching tab:", err.message);
-          statusDiv.textContent = `Error switching tab: ${err.message}`;
-        }
+        console.log("Tab clicked:", button.dataset.tab);
+        document.querySelectorAll(".tab-button").forEach(btn => btn.classList.remove("active"));
+        document.querySelectorAll(".tab-content").forEach(content => content.classList.remove("active"));
+        button.classList.add("active");
+        document.getElementById(button.dataset.tab).classList.add("active");
       });
     });
 
-    setUsernameBtn.addEventListener("click", async () => {
-      console.log("Set Username button clicked");
-      try {
-        const currentUsername = document.getElementById("username-display").textContent;
-        const isAdmin = window.solana?.publicKey?.toBase58() === "Hs7LzaMG6vrhfnHmJXhPx98uyYyEscdXT93dLKKxWQYF";
-        const user = window.solana?.publicKey?.toBase58();
-        console.log("Username button state:", { currentUsername, isAdmin, user });
-        if (!user) {
-          statusDiv.textContent = "Please connect your wallet.";
-          console.log("No wallet connected");
-          return;
-        }
-        if (usernameInput.style.display === "none" && (currentUsername === "Not set" || isAdmin)) {
-          console.log("Showing username input for wallet:", user);
-          usernameInput.style.display = "block";
-          usernameInput.focus();
-          setUsernameBtn.textContent = "Confirm";
-        } else if (usernameInput.style.display === "block") {
-          console.log("Attempting to submit username");
-          const username = usernameInput.value.trim();
-          if (!username) {
-            statusDiv.textContent = "Please enter a username.";
-            console.log("No username entered");
-            return;
-          }
-          console.log("Sending username request:", { wallet: user, username });
-          const response = await fetch("https://smm-chat-server.onrender.com/set-username", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ wallet: user, username }),
-          });
-          if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
-          const data = await response.json();
-          document.getElementById("username-display").textContent = username;
-          statusDiv.textContent = "Username set successfully!";
-          usernameInput.style.display = "none";
-          usernameInput.value = "";
-          setUsernameBtn.textContent = isAdmin ? "Change Username" : "Username Set";
-          if (!isAdmin) setUsernameBtn.disabled = true;
-          console.log("Username set response:", data);
-        }
-      } catch (err) {
-        console.error("Error setting username:", err.message);
-        statusDiv.textContent = `Error setting username: ${err.message}`;
-        usernameInput.style.display = "none";
-        setUsernameBtn.textContent = window.solana?.publicKey?.toBase58() === "Hs7LzaMG6vrhfnHmJXhPx98uyYyEscdXT93dLKKxWQYF" ? "Change Username" : "Set Username";
-      }
-    });
-
-    usernameInput.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") {
-        console.log("Enter key pressed in username input");
-        setUsernameBtn.click();
-      }
-    });
-
-    document.getElementById("send-chat").addEventListener("click", () => {
-      console.log("Send chat button clicked");
-      statusDiv.textContent = "Chat functionality requires wallet connection. Please wait or retry.";
-    });
-
-    document.getElementById("chat-input").addEventListener("keypress", (e) => {
-      if (e.key === "Enter") {
-        console.log("Enter key pressed in chat input");
-        document.getElementById("send-chat").click();
-      }
-    });
-
-    document.getElementById("submit-suggestion").addEventListener("click", () => {
-      console.log("Submit suggestion button clicked");
-      statusDiv.textContent = "Suggestion functionality requires wallet connection. Please wait or retry.";
-    });
-
-    retryBtn.addEventListener("click", async () => {
-      console.log("Retry button clicked");
-      try {
-        retryBtn.style.display = "none";
-        statusDiv.textContent = "";
-        await checkVipAccess();
-      } catch (err) {
-        console.error("Error retrying connection:", err.message);
-        statusDiv.textContent = `Error retrying connection: ${err.message}`;
-      }
-    });
-
-    // Constants and initialization
-    const TOKEN_MINT = new solanaWeb3.PublicKey("BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups");
-    const VIP_MINIMUM = 100000;
-    const ADMIN_WALLET = "Hs7LzaMG6vrhfnHmJXhPx98uyYyEscdXT93dLKKxWQYF";
-    const DONATION_WALLET = "Hs7LzaMG6vrhfnHmJXhPx98uyYyEscdXT93dLKKxWQYF";
-    let ws;
-    let retryCount = 0;
-    const MAX_RETRIES = 5;
-    const RETRY_INTERVAL = 10000;
-
-    const RPC_ENDPOINTS = [
-      "https://silent-fluent-diamond.solana-mainnet.quiknode.pro/bdf6a6133f8736f5bf9097f4628841fe18b60bcc",
-      solanaWeb3.clusterApiUrl("mainnet-beta"),
-      "https://api.mainnet-beta.solana.com"
-    ];
-
-    const TOKEN_MAP = {
-      "So11111111111111111111111111111111111111112": { ticker: "SOL", icon: "/images/sol.png" },
-      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": { ticker: "USDC", icon: "/images/usdc.png" },
-      "BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups": { ticker: "SMM", icon: "/images/smm.png" }
-    };
-
-    async function getConnection(attempt = 0) {
-      console.log("Attempting connection to RPC", attempt + 1, ":", RPC_ENDPOINTS[attempt]);
-      const rpc = RPC_ENDPOINTS[attempt];
-      try {
-        const connection = new solanaWeb3.Connection(rpc, { commitment: "confirmed", disableRetryOnRateLimit: false });
-        await connection.getSlot();
-        console.log(`Connected to RPC: ${rpc}`);
-        return connection;
-      } catch (err) {
-        console.error(`RPC ${rpc} failed:`, err.message);
-        if (attempt < RPC_ENDPOINTS.length - 1) {
-          return getConnection(attempt + 1);
-        }
-        throw new Error("All RPC endpoints failed.");
-      }
-    }
-
-    async function updateVipInfo(publicKey, connection) {
-      console.log("Updating VIP info for:", publicKey.toBase58());
-      try {
-        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-          publicKey,
-          { mint: TOKEN_MINT, programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") }
-        );
-        let tokenBalance = 0;
-        for (const { account } of tokenAccounts.value) {
-          if (account.data.parsed.info.mint === TOKEN_MINT.toBase58()) {
-            tokenBalance = parseFloat(account.data.parsed.info.tokenAmount.uiAmount);
-            break;
-          }
-        }
-        document.getElementById("vip-balance").textContent = tokenBalance.toLocaleString();
-        const rank = tokenBalance >= 1000000 ? "Rhodium" :
-                     tokenBalance >= 750000 ? "Platinum" :
-                     tokenBalance >= 500000 ? "Gold" :
-                     tokenBalance >= 250000 ? "Silver" :
-                     tokenBalance >= 100000 ? "Bronze" : "No Rank";
-        document.getElementById("vip-rank").textContent = rank;
-        console.log("VIP info updated:", { balance: tokenBalance, rank });
-        return { balance: tokenBalance, rank };
-      } catch (err) {
-        console.error("Failed to update VIP info:", err.message);
-        statusDiv.textContent = `Error fetching balance: ${err.message}`;
-        return { balance: 0, rank: "No Rank" };
-      }
-    }
-
-    async function loadUsername(publicKey) {
-      console.log("Fetching username for:", publicKey.toBase58());
-      try {
-        const response = await fetch("https://smm-chat-server.onrender.com/users");
-        if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
-        const users = await response.json();
-        const username = users[publicKey.toBase58()] || "Not set";
-        document.getElementById("username-display").textContent = username;
-        console.log("Loaded username:", username);
-        if (username !== "Not set" && publicKey.toBase58() !== ADMIN_WALLET) {
-          console.log("Disabling set username button for non-admin");
-          setUsernameBtn.textContent = "Username Set";
-          setUsernameBtn.disabled = true;
-          usernameInput.style.display = "none";
-        } else if (publicKey.toBase58() === ADMIN_WALLET) {
-          console.log("Setting button to Change Username for admin");
-          setUsernameBtn.textContent = "Change Username";
-          setUsernameBtn.disabled = false;
-        } else {
-          console.log("Setting button to Set Username for new user");
-          setUsernameBtn.textContent = "Set Username";
-          setUsernameBtn.disabled = false;
-          usernameInput.style.display = "none";
-        }
-        return username;
-      } catch (err) {
-        console.error("Error loading username:", err.message);
-        statusDiv.textContent = `Error loading username: ${err.message}`;
-        return "Not set";
-      }
-    }
-
-    async function populateTokenDropdown(publicKey, connection) {
-      console.log("Populating token dropdown for:", publicKey.toBase58());
-      try {
-        tokenSelect.innerHTML = "<option value=''>Select a token</option>";
-        const balance = await connection.getBalance(publicKey);
-        if (balance > 0) {
-          const option = document.createElement("option");
-          option.value = "So11111111111111111111111111111111111111112";
-          option.innerHTML = `<img src="${TOKEN_MAP["So11111111111111111111111111111111111111112"].icon}" alt="${TOKEN_MAP["So11111111111111111111111111111111111111112"].ticker}" class="token-option"> ${TOKEN_MAP["So11111111111111111111111111111111111111112"].ticker} (${(balance / solanaWeb3.LAMPORTS_PER_SOL).toFixed(2)})`;
-          tokenSelect.appendChild(option);
-        }
-        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-          publicKey,
-          { programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") }
-        );
-        tokenAccounts.value.forEach(({ account }) => {
-          const { mint, tokenAmount } = account.data.parsed.info;
-          const amount = tokenAmount.uiAmount;
-          if (amount > 0 && TOKEN_MAP[mint]) {
-            const option = document.createElement("option");
-            option.value = mint;
-            option.innerHTML = `<img src="${TOKEN_MAP[mint].icon}" alt="${TOKEN_MAP[mint].ticker}" class="token-option"> ${TOKEN_MAP[mint].ticker} (${amount.toFixed(2)})`;
-            tokenSelect.appendChild(option);
-          }
-        });
-        console.log("Token dropdown populated, options:", Array.from(tokenSelect.options).map(opt => ({ value: opt.value, text: opt.text })));
-      } catch (err) {
-        console.error("Error loading tokens:", err.message);
-        statusDiv.textContent = `Error loading tokens: ${err.message}`;
-      }
-    }
-
-    async function sendDonation(publicKey, tokenMint, amount, suggestion) {
-      console.log("sendDonation called:", { wallet: publicKey.toBase58(), tokenMint, amount, suggestion });
-      try {
-        console.log("Phantom status:", { available: !!window.solana, isPhantom: window.solana?.isPhantom });
-        console.log("Buffer status:", { Buffer: typeof window.Buffer, BufferFrom: typeof window.Buffer?.from });
-        if (!window.solana || !window.solana.isPhantom) {
-          throw new Error("Phantom wallet not detected. Please install Phantom.");
-        }
-        if (!tokenMint || !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(tokenMint)) {
-          throw new Error("Invalid token mint selected");
-        }
-        if (!publicKey || !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(publicKey.toBase58())) {
-          throw new Error("Invalid wallet address");
-        }
-        if (!suggestion || amount <= 0) {
-          throw new Error("Invalid suggestion or amount");
-        }
-        if (!window.Buffer || !window.Buffer.from) {
-          throw new Error("Buffer.from is not available. Donation cannot proceed.");
-        }
-        const connection = await getConnection();
-        console.log("Sending request to /submit-suggestion");
-        const response = await fetch("https://smm-chat-server.onrender.com/submit-suggestion", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ wallet: publicKey.toBase58(), token: tokenMint, amount, suggestion }),
-        });
-        console.log("Server response status:", response.status);
-        const data = await response.json();
-        console.log("Server response data:", data);
-        if (!response.ok) {
-          throw new Error(data.error || `HTTP error: ${response.status}`);
-        }
-        if (!data.transaction || !data.suggestionData) {
-          throw new Error("Invalid response: Missing transaction or suggestion data");
-        }
-        console.log("Deserializing transaction");
-        const transactionBuffer = window.Buffer.from(data.transaction, "base64");
-        console.log("Transaction buffer created:", transactionBuffer.length, "bytes");
-        const transaction = solanaWeb3.Transaction.from(transactionBuffer);
-        console.log("Transaction deserialized:", transaction);
-        console.log("Prompting Phantom to sign transaction");
-        const { signature } = await window.solana.signAndSendTransaction(transaction, {
-          skipPreflight: false,
-          commitment: "confirmed",
-        });
-        console.log("Transaction sent, signature:", signature);
-        await connection.confirmTransaction(signature, "confirmed");
-        console.log("Transaction confirmed:", signature);
-        console.log("Confirming suggestion");
-        const confirmResponse = await fetch("https://smm-chat-server.onrender.com/confirm-suggestion", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...data.suggestionData, signature }),
-        });
-        console.log("Confirm suggestion response status:", confirmResponse.status);
-        const confirmData = await confirmResponse.json();
-        console.log("Confirm suggestion response data:", confirmData);
-        if (!confirmResponse.ok) {
-          throw new Error(confirmData.error || `Confirm error: ${confirmResponse.status}`);
-        }
-        console.log("Suggestion confirmed:", confirmData);
-        statusDiv.textContent = "Suggestion and donation submitted successfully!";
-        return true;
-      } catch (err) {
-        console.error("Error sending donation:", err.message, err.stack);
-        statusDiv.textContent = `Error sending donation: ${err.message}`;
+    // Mock wallet connection for demonstration
+    async function checkPhantomWallet() {
+      console.log('Checking for Phantom wallet...');
+      
+      if (!window.solana) {
+        statusDiv.innerHTML = `
+          <div class="error-message">
+            Phantom Wallet not detected. Please install Phantom to access the VIP Zone.
+            <br><button onclick="window.open('https://phantom.app/', '_blank')" class="retry-button" style="margin-top: 10px;">Install Phantom</button>
+          </div>
+        `;
         return false;
       }
-    }
 
-    async function connectWebSocket(rank, userAddress) {
-      console.log("Connecting WebSocket for:", userAddress, "with rank:", rank);
       try {
-        if (retryCount >= MAX_RETRIES) {
-          statusDiv.textContent = "Max retry attempts reached. Please click Retry or refresh the page.";
-          retryBtn.style.display = "block";
-          return;
-        }
-        ws = new WebSocket("wss://smm-chat-server.onrender.com");
-        ws.onopen = () => {
-          statusDiv.textContent = "Connected to chat server!";
-          ws.isAuthenticated = true;
-          retryCount = 0;
-          console.log("WebSocket connected");
-          // Update send-chat handler after WebSocket connection
-          document.getElementById("send-chat").replaceWith(document.getElementById("send-chat").cloneNode(true));
-          document.getElementById("send-chat").addEventListener("click", () => {
-            console.log("Send chat button clicked (post-WebSocket)");
-            try {
-              const input = document.getElementById("chat-input");
-              const text = input.value.trim();
-              if (!text || !ws || ws.readyState !== WebSocket.OPEN || !ws.isAuthenticated) {
-                statusDiv.textContent = !ws ? "No WebSocket connection." :
-                                       ws.readyState !== WebSocket.OPEN ? "WebSocket not connected." :
-                                       !ws.isAuthenticated ? "Not connected to chat server." : "Enter a valid message.";
-                console.log("Chat send failed:", { text, wsExists: !!ws, wsState: ws?.readyState, wsAuthenticated: ws?.isAuthenticated });
-                return;
-              }
-              const user = window.solana?.publicKey?.toBase58() || "Anon";
-              const rank = document.getElementById("vip-rank").textContent;
-              ws.send(JSON.stringify({ type: "chat", user, rank, text }));
-              input.value = "";
-              statusDiv.textContent = "Message sent!";
-              console.log(`Sent message: ${rank} ${user}: ${text}`);
-            } catch (err) {
-              console.error("Error sending chat:", err.message);
-              statusDiv.textContent = `Error sending chat: ${err.message}`;
-            }
-          });
-        };
-        ws.onmessage = (event) => {
-          try {
-            const msg = JSON.parse(event.data);
-            if (msg.user && msg.rank && msg.text && msg.timestamp) {
-              const index = chatMessages.children.length;
-              const date = new Date(msg.timestamp);
-              const timeString = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
-              const p = document.createElement("p");
-              p.innerHTML = `<span class="rank-${msg.rank.toLowerCase()}">${msg.rank}: ${msg.user}</span> (${timeString}): ${msg.text}`;
-              if (window.solana?.publicKey?.toBase58() === ADMIN_WALLET) {
-                const deleteBtn = document.createElement("span");
-                deleteBtn.className = "delete-btn";
-                deleteBtn.textContent = "❌";
-                deleteBtn.onclick = () => {
-                  if (confirm("Are you sure you want to delete this message?")) {
-                    ws.send(JSON.stringify({ type: "delete", index }));
-                    p.remove();
-                  }
-                };
-                p.appendChild(deleteBtn);
-              }
-              chatMessages.appendChild(p);
-              chatMessages.scrollTop = chatMessages.scrollHeight;
-              console.log(`Displayed message: ${msg.rank} ${msg.user}: ${msg.text} at ${timeString}`);
-            } else if (msg.type === "delete" && msg.index !== undefined) {
-              const messages = chatMessages.children;
-              if (messages[msg.index]) {
-                messages[msg.index].remove();
-                console.log(`Deleted message at index ${msg.index}`);
-              }
-            }
-          } catch (err) {
-            console.error("Error parsing WebSocket message:", err.message);
-          }
-        };
-        ws.onclose = (e) => {
-          console.log("WebSocket closed:", e.code, e.reason);
-          statusDiv.textContent = `Chat server disconnected. Retrying (${retryCount + 1}/${MAX_RETRIES})...`;
-          if (retryCount < MAX_RETRIES) {
-            retryCount++;
-            setTimeout(() => connectWebSocket(rank, userAddress), RETRY_INTERVAL);
-          } else {
-            statusDiv.textContent = "Max retry attempts reached. Please click Retry or refresh the page.";
-            retryBtn.style.display = "block";
-          }
-        };
-        ws.onerror = (e) => {
-          console.error("WebSocket error:", e);
-          statusDiv.textContent = "Chat server error. Retrying in 10 seconds...";
-        };
-      } catch (err) {
-        console.error("Error in connectWebSocket:", err.message);
-        statusDiv.textContent = `WebSocket error: ${err.message}`;
-      }
-    }
-
-    async function loadSuggestions() {
-      console.log("Loading suggestions");
-      try {
-        const response = await fetch("https://smm-chat-server.onrender.com/suggestions");
-        const suggestions = await response.json();
-        suggestionsList.innerHTML = "";
-        suggestions.forEach((sug, index) => {
-          const date = new Date(sug.timestamp);
-          const timeString = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
-          const p = document.createElement("p");
-          p.innerHTML = `${sug.username} (${timeString}): ${sug.suggestion} [${sug.token.slice(0, 4)}..., ${sug.amount}]`;
-          if (window.solana?.publicKey?.toBase58() === ADMIN_WALLET) {
-            const deleteBtn = document.createElement("span");
-            deleteBtn.className = "delete-btn";
-            deleteBtn.textContent = "❌";
-            deleteBtn.onclick = () => {
-              if (confirm("Are you sure you want to delete this suggestion?")) {
-                p.remove();
-              }
-            };
-            p.appendChild(deleteBtn);
-          }
-          suggestionsList.appendChild(p);
-        });
-        suggestionsList.scrollTop = suggestionsList.scrollHeight;
-        console.log("Loaded suggestions:", suggestions.length);
-      } catch (err) {
-        console.error("Error loading suggestions:", err.message);
-        statusDiv.textContent = `Error loading suggestions: ${err.message}`;
-      }
-    }
-
-    async function checkVipAccess() {
-      console.log("Checking VIP access");
-      try {
-        if (!window.solana || !window.solana.isPhantom) {
-          statusDiv.textContent = "Phantom Wallet required. Please install Phantom.";
-          retryBtn.style.display = "none";
-          alert("Phantom Wallet is required to access the VIP Zone. Please install it from https://phantom.app.");
-          window.open("https://phantom.app/", "_blank");
-          console.log("No Phantom wallet detected");
-          return false;
-        }
-
-        const provider = window.solana;
-        let publicKey;
-
-        console.log("Checking wallet connection status");
-        try {
-          const resp = await provider.connect();
-          publicKey = resp.publicKey;
-          console.log("Wallet connected:", publicKey.toBase58());
-        } catch (err) {
-          console.error("Wallet connection failed:", err.message);
-          statusDiv.textContent = "Please connect your Phantom wallet.";
-          retryBtn.style.display = "block";
-          return false;
-        }
-
-        const storedPublicKey = sessionStorage.getItem("smmPublicKey");
-        const isVerified = sessionStorage.getItem("smmVipVerified") === "true";
-
-        if (isVerified && storedPublicKey === publicKey.toBase58()) {
-          console.log("VIP access verified via sessionStorage");
-          statusDiv.textContent = "VIP access granted!";
-        } else {
-          statusDiv.textContent = `Connected: ${publicKey.toBase58().slice(0, 6)}... Checking SMM token balance...`;
-          const connection = await getConnection();
-          const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-            publicKey,
-            {
-              mint: TOKEN_MINT,
-              programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
-            }
-          );
-
-          let tokenBalance = 0;
-          for (const { account } of tokenAccounts.value) {
-            const info = account.data.parsed.info;
-            if (info.mint === TOKEN_MINT.toBase58()) {
-              tokenBalance = parseFloat(info.tokenAmount.uiAmount);
-              break;
-            }
-          }
-
-          if (tokenBalance < VIP_MINIMUM) {
-            statusDiv.textContent = `Access denied: You need at least ${VIP_MINIMUM.toLocaleString()} SMM tokens. Current balance: ${tokenBalance.toLocaleString()} SMM.`;
-            retryBtn.style.display = "block";
-            sessionStorage.removeItem("smmVipVerified");
-            sessionStorage.removeItem("smmPublicKey");
-            console.log("Insufficient SMM balance:", tokenBalance);
-            return false;
-          }
-
-          sessionStorage.setItem("smmVipVerified", "true");
-          sessionStorage.setItem("smmPublicKey", publicKey.toBase58());
-          statusDiv.textContent = "VIP access granted!";
-        }
-
-        console.log("Initializing UI for:", publicKey.toBase58());
-        const connection = await getConnection();
-        const { rank } = await updateVipInfo(publicKey, connection);
-        await loadUsername(publicKey);
-        await populateTokenDropdown(publicKey, connection);
-        await loadSuggestions();
-        connectWebSocket(rank, publicKey.toBase58().slice(0, 6));
-        console.log("UI initialization complete");
-        // Update submit-suggestion handler after wallet connection
-        document.getElementById("submit-suggestion").replaceWith(document.getElementById("submit-suggestion").cloneNode(true));
-        document.getElementById("submit-suggestion").addEventListener("click", async () => {
-          console.log("Submit suggestion button clicked (post-wallet)");
-          try {
-            const suggestion = suggestionInput.value.trim();
-            const token = tokenSelect.value;
-            const amount = parseFloat(donationAmount.value) || 0;
-            console.log("Submit suggestion inputs:", { suggestion, token, amount });
-            if (!suggestion || !token || amount <= 0) {
-              statusDiv.textContent = "Please enter a suggestion, select a token, and specify a valid amount.";
-              console.log("Invalid suggestion inputs:", { suggestion, token, amount });
-              return;
-            }
-            const user = window.solana?.publicKey;
-            if (!user) {
-              statusDiv.textContent = "Please connect your wallet.";
-              console.log("No wallet connected for suggestion");
-              return;
-            }
-            console.log("Submitting suggestion:", { wallet: user.toBase58(), suggestion, token, amount });
-            const success = await sendDonation(user, token, amount, suggestion);
-            if (success) {
-              statusDiv.textContent = "Suggestion submitted successfully!";
-              suggestionInput.value = "";
-              donationAmount.value = "";
-              tokenSelect.value = "";
-              await loadSuggestions();
-            }
-          } catch (err) {
-            console.error("Error submitting suggestion:", err.message);
-            statusDiv.textContent = `Error submitting suggestion: ${err.message}`;
-          }
-        });
+        statusDiv.textContent = "Connecting to Phantom wallet...";
+        const response = await window.solana.connect();
+        const publicKey = response.publicKey.toString();
+        
+        console.log('Connected to wallet:', publicKey.slice(0, 8) + '...');
+        statusDiv.textContent = `Connected: ${publicKey.slice(0, 8)}...`;
+        
+        // Simulate checking SMM balance
+        await checkSMMBalance(publicKey);
         return true;
-      } catch (err) {
-        console.error("VIP access check failed:", err.message);
-        statusDiv.textContent = `Could not verify SMM balance: ${err.message}`;
+        
+      } catch (error) {
+        console.error('Wallet connection error:', error);
+        statusDiv.textContent = `Wallet connection failed: ${error.message}`;
         retryBtn.style.display = "block";
         return false;
       }
     }
 
-    window.addEventListener("load", async () => {
-      console.log("Page loaded, initiating VIP access check");
+    async function checkSMMBalance(publicKey) {
       try {
-        const hasAccess = await checkVipAccess();
-        if (!hasAccess && !retryBtn.style.display) {
-          statusDiv.textContent = statusDiv.textContent || "Redirecting to main page...";
-          setTimeout(() => window.location.href = "index.html", 3000);
+        statusDiv.textContent = "Checking SMM token balance...";
+        
+        // Create connection
+        const connection = new solanaWeb3.Connection(
+          solanaWeb3.clusterApiUrl('mainnet-beta'),
+          'confirmed'
+        );
+        
+        const tokenMint = new solanaWeb3.PublicKey(TOKEN_MINT_ADDRESS);
+        const walletPublicKey = new solanaWeb3.PublicKey(publicKey);
+        
+        // Get token accounts
+        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+          walletPublicKey,
+          { mint: tokenMint }
+        );
+        
+        let balance = 0;
+        if (tokenAccounts.value.length > 0) {
+          balance = tokenAccounts.value[0].account.data.parsed.info.tokenAmount.uiAmount || 0;
         }
-      } catch (err) {
-        console.error("Error on page load:", err.message);
-        statusDiv.textContent = `Error loading page: ${err.message}`;
+        
+        console.log('SMM Balance:', balance);
+        
+        // Update UI
+        document.getElementById("vip-balance").textContent = balance.toLocaleString();
+        
+        const rank = getRank(balance);
+        document.getElementById("vip-rank").textContent = rank;
+        document.getElementById("vip-rank").className = `rank-${rank.toLowerCase()}`;
+        
+        if (balance >= VIP_MINIMUM) {
+          statusDiv.textContent = `VIP Access Granted! Balance: ${balance.toLocaleString()} SMM`;
+          initializeVIPFeatures(publicKey, rank);
+        } else {
+          statusDiv.innerHTML = `
+            <div class="error-message">
+              Insufficient SMM tokens for VIP access.<br>
+              Required: ${VIP_MINIMUM.toLocaleString()} SMM<br>
+              Your balance: ${balance.toLocaleString()} SMM
+            </div>
+          `;
+          retryBtn.style.display = "block";
+        }
+        
+      } catch (error) {
+        console.error('Error checking SMM balance:', error);
+        statusDiv.textContent = `Error checking balance: ${error.message}`;
+        retryBtn.style.display = "block";
       }
+    }
+
+    function getRank(balance) {
+      if (balance >= 1000000) return "Rhodium";
+      if (balance >= 750000) return "Platinum";
+      if (balance >= 500000) return "Gold";
+      if (balance >= 250000) return "Silver";
+      if (balance >= 100000) return "Bronze";
+      return "No Rank";
+    }
+
+    function initializeVIPFeatures(publicKey, rank) {
+      console.log('Initializing VIP features for:', publicKey.slice(0, 8) + '...');
+      
+      // Initialize username functionality
+      const setUsernameBtn = document.getElementById("set-username-btn");
+      const usernameInput = document.getElementById("username-input");
+      
+      setUsernameBtn.addEventListener("click", () => {
+        if (usernameInput.style.display === "none") {
+          usernameInput.style.display = "block";
+          usernameInput.focus();
+          setUsernameBtn.textContent = "Confirm";
+        } else {
+          const username = usernameInput.value.trim();
+          if (username) {
+            document.getElementById("username-display").textContent = username;
+            usernameInput.style.display = "none";
+            setUsernameBtn.textContent = "Change Username";
+            statusDiv.textContent = "Username updated!";
+          }
+        }
+      });
+
+      // Initialize chat functionality
+      const sendChatBtn = document.getElementById("send-chat");
+      const chatInput = document.getElementById("chat-input");
+      const chatMessages = document.getElementById("chat-messages");
+      
+      sendChatBtn.addEventListener("click", () => {
+        const message = chatInput.value.trim();
+        if (message) {
+          const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+          const username = document.getElementById("username-display").textContent;
+          const displayName = username !== "Not set" ? username : publicKey.slice(0, 8) + '...';
+          
+          const messageElement = document.createElement("p");
+          messageElement.innerHTML = `<span class="rank-${rank.toLowerCase()}">${rank}: ${displayName}</span> (${timestamp}): ${message}`;
+          chatMessages.appendChild(messageElement);
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+          
+          chatInput.value = "";
+          statusDiv.textContent = "Message sent!";
+        }
+      });
+
+      chatInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") sendChatBtn.click();
+      });
+
+      // Initialize suggestions functionality
+      const submitSuggestionBtn = document.getElementById("submit-suggestion");
+      const suggestionInput = document.getElementById("suggestion-input");
+      const donationAmount = document.getElementById("donation-amount");
+      const tokenSelect = document.getElementById("token-select");
+      const suggestionsList = document.getElementById("suggestions-list");
+      
+      submitSuggestionBtn.addEventListener("click", () => {
+        const suggestion = suggestionInput.value.trim();
+        const amount = donationAmount.value;
+        const token = tokenSelect.value;
+        
+        if (suggestion && amount && token) {
+          const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+          const username = document.getElementById("username-display").textContent;
+          const displayName = username !== "Not set" ? username : publicKey.slice(0, 8) + '...';
+          
+          const suggestionElement = document.createElement("p");
+          const tokenName = token.includes("So111") ? "SOL" : token.includes("EPjF") ? "USDC" : "SMM";
+          suggestionElement.innerHTML = `${displayName} (${timestamp}): ${suggestion} [${tokenName}, ${amount}]`;
+          suggestionsList.appendChild(suggestionElement);
+          suggestionsList.scrollTop = suggestionsList.scrollHeight;
+          
+          suggestionInput.value = "";
+          donationAmount.value = "";
+          tokenSelect.value = "";
+          statusDiv.textContent = "Suggestion submitted!";
+        } else {
+          statusDiv.textContent = "Please fill in all fields for your suggestion.";
+        }
+      });
+    }
+
+    // Retry functionality
+    retryBtn.addEventListener("click", async () => {
+      retryBtn.style.display = "none";
+      statusDiv.textContent = "Retrying...";
+      await checkPhantomWallet();
     });
+
+    // Initialize on page load
+    window.addEventListener("load", async () => {
+      console.log('Page loaded, starting VIP zone...');
+      
+      // Small delay to ensure everything is loaded
+      setTimeout(async () => {
+        if (typeof solanaWeb3 !== 'undefined') {
+          await checkPhantomWallet();
+        }
+      }, 1000);
+    });
+
+    // Global error handler
+    window.onerror = (msg, url, line, col, error) => {
+      console.error(`Error: ${msg} at ${url}:${line}:${col}`, error);
+      statusDiv.innerHTML = `<div class="error-message">An error occurred: ${msg}<br>Please refresh the page.</div>`;
+    };
   </script>
 </body>
 </html>
