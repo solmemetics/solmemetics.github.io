@@ -177,13 +177,15 @@
     }
   </style>
   <!-- Load buffer -->
-    <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.min.js"></script>
-  <script>
-    console.log('buffer:', typeof buffer, buffer);
-    window.Buffer = buffer.Buffer;
-    console.log('window.Buffer:', typeof window.Buffer, 'Buffer.from:', typeof window.Buffer.from);
-  </script>
-  <script src="https://unpkg.com/@solana/web3.js@1.98.2/lib/index.iife.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.min.js"></script>
+<script>
+  // Explicitly assign Buffer to global scope
+  window.Buffer = buffer.Buffer;
+  console.log("✅ Buffer loaded:", typeof Buffer.from); // should be 'function'
+</script>
+
+<!-- Load Solana web3 -->
+<script src="https://unpkg.com/@solana/web3.js@1.98.2/lib/index.iife.min.js"></script>
 </head>
 <body>
   <img src="your-image.png" alt="SMM Logo" />
