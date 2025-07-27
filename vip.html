@@ -118,7 +118,7 @@
     #vip-info, #chat-container, #suggestions-container, #polls-container {
       margin-top: 0;
     }
-    #vip-balance, #vip-rank, #username-display {
+    #vip-balance, #vip-rank, #username-display, #bio-display {
       color: #ffd700;
       font-weight: 600;
     }
@@ -271,7 +271,7 @@
     .delete-btn:hover, .pin-btn:hover {
       color: #cc0000;
     }
-    #suggestion-input, #poll-question, #poll-option, #bio-input {
+    #suggestion-input, #poll-question, #poll-option, #bio-input, #username-input {
       width: 100%;
       padding: 12px;
       border: none;
@@ -281,7 +281,7 @@
       font-size: 16px;
       margin-bottom: 10px;
     }
-    #suggestion-input:focus, #poll-question:focus, #poll-option:focus, #bio-input:focus {
+    #suggestion-input:focus, #poll-question:focus, #poll-option:focus, #bio-input:focus, #username-input:focus {
       box-shadow: 0 0 10px var(--highlight);
       outline: none;
     }
@@ -299,16 +299,11 @@
       background: var(--button-hover);
       transform: translateY(-2px);
     }
-    #username-input, #avatar-input, #bio-input {
+    #username-input, #bio-input {
       display: none;
-      width: 100%;
-      padding: 12px;
-      border: none;
-      border-radius: 8px;
-      background: var(--input-bg);
-      color: var(--text);
-      font-size: 16px;
-      margin-top: 10px;
+    }
+    #avatar-input {
+      display: none;
     }
     #poll-list {
       max-height: 400px;
@@ -475,38 +470,42 @@
 
     // Username setting
     setUsernameBtn.addEventListener("click", async () => {
-      const currentUsername = document.getElementById("username-display").textContent;
-      const isAdmin = window.solana?.publicKey?.toBase58() === ADMIN_WALLET;
       const user = window.solana?.publicKey?.toBase58();
+      const isAdmin = user === ADMIN_WALLET;
       if (!user) {
         statusDiv.textContent = "Please connect your wallet.";
         return;
       }
-      if (usernameInput.style.display === "none" && (currentUsername === "Not set" || isAdmin)) {
+      if (usernameInput.style.display === "none") {
         usernameInput.style.display = "block";
         usernameInput.focus();
         setUsernameBtn.textContent = "Confirm Username";
-      } else if (usernameInput.style.display === "block") {
+      } else {
         const username = usernameInput.value.trim();
         if (!username) {
           statusDiv.textContent = "Please enter a username.";
+          usernameInput.style.display = "none";
+          setUsernameBtn.textContent = isAdmin ? "Change Username" : "Set Username";
           return;
         }
-        const response = await fetch(`${BACKEND_URL}/set-username`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ wallet: user, username }),
-        });
-        if (!response.ok) {
-          statusDiv.textContent = `Error: ${await response.text()}`;
-          return;
+        try {
+          const response = await fetch(`${BACKEND_URL}/set-username`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ wallet: user, username }),
+          });
+          if (!response.ok) {
+            throw new Error(await response.text());
+          }
+          document.getElementById("username-display").textContent = username;
+          statusDiv.textContent = "Username set successfully!";
+          usernameInput.style.display = "none";
+          usernameInput.value = "";
+          setUsernameBtn.textContent = isAdmin ? "Change Username" : "Username Set";
+          if (!isAdmin) setUsernameBtn.disabled = true;
+        } catch (err) {
+          statusDiv.textContent = `Error: ${err.message}`;
         }
-        document.getElementById("username-display").textContent = username;
-        statusDiv.textContent = "Username set successfully!";
-        usernameInput.style.display = "none";
-        usernameInput.value = "";
-        setUsernameBtn.textContent = isAdmin ? "Change Username" : "Username Set";
-        if (!isAdmin) setUsernameBtn.disabled = true;
       }
     });
 
@@ -516,42 +515,46 @@
 
     // Bio setting
     setBioBtn.addEventListener("click", async () => {
-      const currentBio = document.getElementById("bio-display").textContent;
-      const isAdmin = window.solana?.publicKey?.toBase58() === ADMIN_WALLET;
       const user = window.solana?.publicKey?.toBase58();
+      const isAdmin = user === ADMIN_WALLET;
       if (!user) {
         statusDiv.textContent = "Please connect your wallet.";
         return;
       }
-      if (bioInput.style.display === "none" && (currentBio === "Not set" || isAdmin)) {
+      if (bioInput.style.display === "none") {
         bioInput.style.display = "block";
         bioInput.focus();
         setBioBtn.textContent = "Confirm Bio";
-      } else if (bioInput.style.display === "block") {
+      } else {
         const bio = bioInput.value.trim();
         if (!bio) {
           statusDiv.textContent = "Please enter a bio.";
+          bioInput.style.display = "none";
+          setBioBtn.textContent = isAdmin ? "Change Bio" : "Set Bio";
           return;
         }
         if (bio.length > 100) {
           statusDiv.textContent = "Bio must be 100 characters or less.";
           return;
         }
-        const response = await fetch(`${BACKEND_URL}/set-bio`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ wallet: user, bio }),
-        });
-        if (!response.ok) {
-          statusDiv.textContent = `Error: ${await response.text()}`;
-          return;
+        try {
+          const response = await fetch(`${BACKEND_URL}/set-bio`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ wallet: user, bio }),
+          });
+          if (!response.ok) {
+            throw new Error(await response.text());
+          }
+          document.getElementById("bio-display").textContent = bio;
+          statusDiv.textContent = "Bio set successfully!";
+          bioInput.style.display = "none";
+          bioInput.value = "";
+          setBioBtn.textContent = isAdmin ? "Change Bio" : "Bio Set";
+          if (!isAdmin) setBioBtn.disabled = true;
+        } catch (err) {
+          statusDiv.textContent = `Error: ${err.message}`;
         }
-        document.getElementById("bio-display").textContent = bio;
-        statusDiv.textContent = "Bio set successfully!";
-        bioInput.style.display = "none";
-        bioInput.value = "";
-        setBioBtn.textContent = isAdmin ? "Change Bio" : "Bio Set";
-        if (!isAdmin) setBioBtn.disabled = true;
       }
     });
 
@@ -561,45 +564,43 @@
 
     // Avatar upload
     uploadAvatarBtn.addEventListener("click", () => {
-      const isAdmin = window.solana?.publicKey?.toBase58() === ADMIN_WALLET;
       const user = window.solana?.publicKey?.toBase58();
+      const isAdmin = user === ADMIN_WALLET;
       if (!user) {
         statusDiv.textContent = "Please connect your wallet.";
         return;
       }
-      if (avatarInput.style.display === "none") {
-        avatarInput.style.display = "block";
-        avatarInput.click(); // Trigger file picker
-        uploadAvatarBtn.textContent = "Confirm Avatar";
-      } else {
-        const file = avatarInput.files[0];
-        if (!file) {
-          statusDiv.textContent = "Please select an image.";
-          return;
-        }
-        const formData = new FormData();
-        formData.append("avatar", file);
-        formData.append("wallet", user);
-        fetch(`${BACKEND_URL}/upload-avatar`, {
+      avatarInput.click(); // Immediately trigger file picker
+    });
+
+    avatarInput.addEventListener("change", async () => {
+      const user = window.solana?.publicKey?.toBase58();
+      const isAdmin = user === ADMIN_WALLET;
+      const file = avatarInput.files[0];
+      if (!file) {
+        statusDiv.textContent = "Please select an image.";
+        return;
+      }
+      const formData = new FormData();
+      formData.append("avatar", file);
+      formData.append("wallet", user);
+      try {
+        const response = await fetch(`${BACKEND_URL}/upload-avatar`, {
           method: "POST",
           body: formData,
-        })
-          .then(response => response.json())
-          .then(data => {
-            if (data.error) {
-              statusDiv.textContent = `Error: ${data.error}`;
-            } else {
-              statusDiv.textContent = "Avatar uploaded successfully!";
-              avatarInput.style.display = "none";
-              avatarInput.value = "";
-              uploadAvatarBtn.textContent = isAdmin ? "Change Avatar" : "Avatar Set";
-              if (!isAdmin) uploadAvatarBtn.disabled = true;
-              loadUsername(window.solana.publicKey); // Reload to update avatar
-            }
-          })
-          .catch(err => {
-            statusDiv.textContent = `Error uploading avatar: ${err.message}`;
-          });
+        });
+        const data = await response.json();
+        if (data.error) {
+          statusDiv.textContent = `Error: ${data.error}`;
+        } else {
+          statusDiv.textContent = "Avatar uploaded successfully!";
+          avatarInput.value = "";
+          uploadAvatarBtn.textContent = isAdmin ? "Change Avatar" : "Avatar Set";
+          if (!isAdmin) uploadAvatarBtn.disabled = true;
+          await loadUsername(window.solana.publicKey); // Reload to update avatar
+        }
+      } catch (err) {
+        statusDiv.textContent = `Error uploading avatar: ${err.message}`;
       }
     });
 
@@ -864,18 +865,22 @@
         statusDiv.textContent = "Enter a question and at least two options (comma-separated).";
         return;
       }
-      const response = await fetch(`${BACKEND_URL}/create-poll`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, options, wallet: user }),
-      });
-      if (response.ok) {
-        statusDiv.textContent = "Poll created successfully!";
-        pollQuestion.value = "";
-        pollOption.value = "";
-        loadPolls();
-      } else {
-        statusDiv.textContent = `Error creating poll: ${await response.text()}`;
+      try {
+        const response = await fetch(`${BACKEND_URL}/create-poll`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question, options, wallet: user }),
+        });
+        if (response.ok) {
+          statusDiv.textContent = "Poll created successfully!";
+          pollQuestion.value = "";
+          pollOption.value = "";
+          await loadPolls();
+        } else {
+          statusDiv.textContent = `Error creating poll: ${await response.text()}`;
+        }
+      } catch (err) {
+        statusDiv.textContent = `Error creating poll: ${err.message}`;
       }
     });
 
@@ -933,22 +938,26 @@
         const userData = users[publicKey.toBase58()] || { username: "Not set", avatar: null, bio: "Not set" };
         document.getElementById("username-display").textContent = userData.username;
         document.getElementById("bio-display").textContent = userData.bio;
-        if (userData.username !== "Not set" && publicKey.toBase58() !== ADMIN_WALLET) {
+        const isAdmin = publicKey.toBase58() === ADMIN_WALLET;
+        if (userData.username !== "Not set" && !isAdmin) {
           setUsernameBtn.textContent = "Username Set";
-          setBioBtn.textContent = "Bio Set";
-          uploadAvatarBtn.textContent = userData.avatar ? "Avatar Set" : "Upload Avatar";
           setUsernameBtn.disabled = true;
-          setBioBtn.disabled = true;
-          uploadAvatarBtn.disabled = userData.avatar ? true : false;
-          usernameInput.style.display = "none";
-          bioInput.style.display = "none";
-          avatarInput.style.display = "none";
-        } else if (publicKey.toBase58() === ADMIN_WALLET) {
+        } else {
           setUsernameBtn.textContent = "Change Username";
-          setBioBtn.textContent = "Change Bio";
-          uploadAvatarBtn.textContent = userData.avatar ? "Change Avatar" : "Upload Avatar";
           setUsernameBtn.disabled = false;
+        }
+        if (userData.bio !== "Not set" && !isAdmin) {
+          setBioBtn.textContent = "Bio Set";
+          setBioBtn.disabled = true;
+        } else {
+          setBioBtn.textContent = "Change Bio";
           setBioBtn.disabled = false;
+        }
+        if (userData.avatar && !isAdmin) {
+          uploadAvatarBtn.textContent = "Avatar Set";
+          uploadAvatarBtn.disabled = true;
+        } else {
+          uploadAvatarBtn.textContent = userData.avatar ? "Change Avatar" : "Upload Avatar";
           uploadAvatarBtn.disabled = false;
         }
         return userData;
