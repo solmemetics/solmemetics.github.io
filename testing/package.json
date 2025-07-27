@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+    "@solana/web3.js": "^1.98.2",
+    "@solana/spl-token": "^0.4.8",
+    "@nfteyez/sol-rayz": "^0.10.2",
+    "express": "^4.18.2",
+    "ws": "^8.18.0",
+    "dotenv": "^16.0.3",
+    "cors": "^2.8.5"
+  }
+}

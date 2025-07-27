@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VIP Zone</title>
+  <title>Solmemetics VIP Zone</title>
   <style>
     body {
       background-color: black;
@@ -53,7 +53,7 @@
       color: #ccc;
       font-weight: bold;
     }
-    #vip-info, #chat-container, #suggestions-container {
+    #vip-info, #chat-container, #suggestions-container, #staking-container {
       background: #1a1a1a;
       padding: 20px;
       border-radius: 10px;
@@ -102,15 +102,38 @@
       background: #222;
       border-radius: 5px;
     }
-    #chat-messages p, #suggestions-list p {
-      margin: 5px 0;
+    .chat-message {
+      border: 1px solid #444;
+      padding: 10px;
+      margin-bottom: 10px;
+      background: #333;
+      border-radius: 5px;
+      font-family: monospace;
       font-size: 14px;
-      font-weight: bold;
       display: flex;
-      align-items: center;
       justify-content: space-between;
+      align-items: center;
     }
-    #chat-messages .delete-btn, #suggestions-list .delete-btn {
+    .chat-user {
+      width: 200px;
+      flex-shrink: 0;
+    }
+    .chat-user span.rank {
+      display: block;
+      font-size: 12px;
+    }
+    .chat-text {
+      flex-grow: 1;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin-left: 20px;
+    }
+    .chat-message hr {
+      border: none;
+      border-top: 1px solid #444;
+      margin: 5px 0;
+    }
+    .delete-btn {
       color: red;
       cursor: pointer;
       margin-left: 10px;
@@ -149,6 +172,24 @@
       font-weight: bold;
       margin: 10px 0;
     }
+    #suggestions-list p {
+      margin: 5px 0;
+      font-size: 14px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    #rewards-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    #rewards-table th, #rewards-table td {
+      padding: 10px;
+      border: 1px solid #444;
+      text-align: left;
+    }
     .rank-bronze { color: #cd7f32; }
     .rank-silver { color: #c0c0c0; }
     .rank-gold { color: #ffd700; }
@@ -172,6 +213,7 @@
     <button class="tab-button active" data-tab="info">Profile</button>
     <button class="tab-button" data-tab="chat">Chat</button>
     <button class="tab-button" data-tab="suggestions">Suggestions</button>
+    <button class="tab-button" data-tab="staking">Staking</button>
   </div>
 
   <div id="info" class="tab-content active">
@@ -197,6 +239,21 @@
       <button id="submit-suggestion" class="retry-button">Submit Suggestion</button>
     </div>
   </div>
+  <div id="staking" class="tab-content">
+    <div id="staking-container">
+      <table id="rewards-table">
+        <thead>
+          <tr>
+            <th>SMM Balance</th>
+            <th>Daily Reward</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="rewards-list"></tbody>
+      </table>
+    </div>
+  </div>
 
   <div id="status"></div>
   <button id="retry" class="retry-button" style="display: none;">Retry Connection</button>
@@ -219,7 +276,7 @@
     // Constants and initialization
     const TOKEN_MINT = new solanaWeb3.PublicKey("BbDK2SdFKstCuCjF152jWaRVmJMV7hHUW4xYvdMbjups");
     const VIP_MINIMUM = 100000;
-    const ADMIN_WALLET = "Hs7LzaMG6vrhfnHmJXhPx98uyYyEscdXT93dLKKxWQYF";
+    const ADMIN_WALLET = "J1sjGFj5tTUdWvGEW5TBE4ZC97Fafsqz2Uo5JuhyBeuy";
     const BACKEND_URL = "https://smm-chat-server.onrender.com";
     const WEBSOCKET_URL = "wss://smm-chat-server.onrender.com";
     let ws;
@@ -241,6 +298,13 @@
     const setUsernameBtn = document.getElementById("set-username-btn");
     const usernameInput = document.getElementById("username-input");
     const suggestionInput = document.getElementById("suggestion-input");
+    const submitSuggestionBtn = document.getElementById("submit-suggestion");
+    const sendChatBtn = document.getElementById("send-chat");
+    const chatInput = document.getElementById("chat-input");
+    const rewardsList = document.getElementById("rewards-list");
+
+    let currentUser = null;
+    let userRank = "No Rank";
 
     // Tab functionality
     document.querySelectorAll(".tab-button").forEach(button => {
@@ -251,6 +315,8 @@
           document.querySelectorAll(".tab-content").forEach(content => content.classList.remove("active"));
           button.classList.add("active");
           document.getElementById(button.dataset.tab).classList.add("active");
+          if (button.dataset.tab === "suggestions") loadSuggestions();
+          if (button.dataset.tab === "staking") loadRewards();
         } catch (err) {
           console.error("Error switching tab:", err.message);
           statusDiv.textContent = `Error switching tab: ${err.message}`;
@@ -263,16 +329,14 @@
       console.log("Set Username button clicked");
       try {
         const currentUsername = document.getElementById("username-display").textContent;
-        const isAdmin = window.solana?.publicKey?.toBase58() === ADMIN_WALLET;
-        const user = window.solana?.publicKey?.toBase58();
-        console.log("Username button state:", { currentUsername, isAdmin, user });
-        if (!user) {
+        const isAdmin = currentUser === ADMIN_WALLET;
+        if (!currentUser) {
           statusDiv.textContent = "Please connect your wallet.";
           console.log("No wallet connected");
           return;
         }
         if (usernameInput.style.display === "none" && (currentUsername === "Not set" || isAdmin)) {
-          console.log("Showing username input for wallet:", user);
+          console.log("Showing username input");
           usernameInput.style.display = "block";
           usernameInput.focus();
           setUsernameBtn.textContent = "Confirm";
@@ -284,11 +348,16 @@
             console.log("No username entered");
             return;
           }
-          console.log("Sending username request:", { wallet: user, username });
+          if (["dev", "admin", "owner"].includes(username.toLowerCase())) {
+            statusDiv.textContent = "Username cannot be 'dev', 'admin', or 'owner'.";
+            console.log("Invalid username:", username);
+            return;
+          }
+          console.log("Sending username request");
           const response = await fetch(`${BACKEND_URL}/set-username`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ wallet: user, username }),
+            body: JSON.stringify({ wallet: currentUser, username }),
           });
           if (!response.ok) {
             const errorText = await response.text();
@@ -302,12 +371,14 @@
           setUsernameBtn.textContent = isAdmin ? "Change Username" : "Username Set";
           if (!isAdmin) setUsernameBtn.disabled = true;
           console.log("Username set response:", data);
+          sendChatBtn.disabled = false;
+          submitSuggestionBtn.disabled = false;
         }
       } catch (err) {
         console.error("Error setting username:", err.message);
         statusDiv.textContent = `Error setting username: ${err.message}`;
         usernameInput.style.display = "none";
-        setUsernameBtn.textContent = window.solana?.publicKey?.toBase58() === ADMIN_WALLET ? "Change Username" : "Set Username";
+        setUsernameBtn.textContent = currentUser === ADMIN_WALLET ? "Change Username" : "Set Username";
       }
     });
 
@@ -318,9 +389,88 @@
       }
     });
 
+    // Solana connection with retry
+    async function getConnection(attempt = 0) {
+      const rpc = RPC_ENDPOINTS[attempt];
+      try {
+        const connection = new solanaWeb3.Connection(rpc, { commitment: "confirmed" });
+        await connection.getSlot();
+        console.log(`Connected to RPC: ${rpc}`);
+        return connection;
+      } catch (err) {
+        console.error(`RPC ${rpc} failed:`, err);
+        if (attempt < RPC_ENDPOINTS.length - 1) {
+          return getConnection(attempt + 1);
+        }
+        throw new Error("All RPC endpoints failed");
+      }
+    }
+
+    // Check wallet and balance
+    async function checkWallet() {
+      console.log("Checking wallet");
+      try {
+        if (typeof window.solana === "undefined") {
+          statusDiv.textContent = "Phantom wallet not detected. Please install Phantom.";
+          console.log("Phantom wallet not detected");
+          return;
+        }
+        const response = await window.solana.connect();
+        currentUser = response.publicKey.toBase58();
+        console.log("Wallet connected:", currentUser);
+        statusDiv.textContent = `Connected as ${currentUser.slice(0, 6)}...${currentUser.slice(-4)}`;
+
+        const connection = await getConnection();
+        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+          response.publicKey,
+          { mint: TOKEN_MINT, programId: solanaWeb3.TOKEN_PROGRAM_ID }
+        );
+        let tokenBalance = 0;
+        for (const { account } of tokenAccounts.value) {
+          if (account.data.parsed.info.mint === TOKEN_MINT.toBase58()) {
+            tokenBalance = parseFloat(account.data.parsed.info.tokenAmount.uiAmount);
+            break;
+          }
+        }
+        console.log("Token balance:", tokenBalance);
+        document.getElementById("vip-balance").textContent = tokenBalance.toLocaleString();
+
+        userRank = tokenBalance >= 1000000 ? "Rhodium" :
+                   tokenBalance >= 750000 ? "Platinum" :
+                   tokenBalance >= 500000 ? "Gold" :
+                   tokenBalance >= 250000 ? "Silver" :
+                   tokenBalance >= 100000 ? "Bronze" : "No Rank";
+        document.getElementById("vip-rank").textContent = userRank;
+        document.getElementById("vip-rank").className = `rank-${userRank.toLowerCase().replace(" ", "-")}`;
+
+        if (tokenBalance < VIP_MINIMUM) {
+          statusDiv.textContent = `You need at least ${VIP_MINIMUM.toLocaleString()} SMM to access VIP features.`;
+          console.log("Insufficient balance for VIP access:", tokenBalance);
+          return;
+        }
+
+        // Load username
+        const usersResponse = await fetch(`${BACKEND_URL}/users`);
+        const users = await usersResponse.json();
+        const username = users[currentUser] || "Not set";
+        document.getElementById("username-display").textContent = username;
+        setUsernameBtn.textContent = (username !== "Not set" && currentUser !== ADMIN_WALLET) ? "Username Set" : "Set Username";
+        setUsernameBtn.disabled = (username !== "Not set" && currentUser !== ADMIN_WALLET);
+        sendChatBtn.disabled = username === "Not set";
+        submitSuggestionBtn.disabled = username === "Not set";
+        console.log("Username loaded:", username);
+
+        connectWebSocket(userRank, currentUser);
+      } catch (err) {
+        console.error("Error checking wallet:", err);
+        statusDiv.textContent = `Error connecting wallet: ${err.message}`;
+        retryBtn.style.display = "block";
+      }
+    }
+
     // WebSocket connection for chat
     async function connectWebSocket(rank, userAddress) {
-      console.log("Connecting WebSocket for:", userAddress, "with rank:", rank);
+      console.log("Connecting WebSocket");
       try {
         if (retryCount >= MAX_RETRIES) {
           statusDiv.textContent = "Max retry attempts reached. Please click Retry or refresh the page.";
@@ -333,410 +483,315 @@
           ws.isAuthenticated = true;
           retryCount = 0;
           console.log("WebSocket connected");
-          // Clear chat messages on connect
           chatMessages.innerHTML = "<p>Chat connected. Waiting for messages...</p>";
-          // Update send-chat handler
-          document.getElementById("send-chat").replaceWith(document.getElementById("send-chat").cloneNode(true));
-          document.getElementById("send-chat").addEventListener("click", () => {
-            console.log("Send chat button clicked (post-WebSocket)");
-            try {
-              const input = document.getElementById("chat-input");
-              const text = input.value.trim();
-              if (!text || !ws || ws.readyState !== WebSocket.OPEN || !ws.isAuthenticated) {
-                statusDiv.textContent = !ws ? "No WebSocket connection." :
-                                       ws.readyState !== WebSocket.OPEN ? "WebSocket not connected." :
-                                       !ws.isAuthenticated ? "Not connected to chat server." : "Enter a valid message.";
-                console.log("Chat send failed:", { text, wsExists: !!ws, wsState: ws?.readyState, wsAuthenticated: ws?.isAuthenticated });
+          loadMessages();
+        };
+        ws.onmessage = async (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            console.log("Received WebSocket message:", msg);
+            if (msg.type === "chat") {
+              if (!msg.user || !msg.rank || !msg.text || !msg.timestamp) {
+                console.warn("Invalid chat message format:", msg);
                 return;
               }
-              const user = window.solana?.publicKey?.toBase58() || "Anon";
-              const rank = document.getElementById("vip-rank").textContent;
-              const message = { type: "chat", user, rank, text, timestamp: new Date().toISOString() };
-              ws.send(JSON.stringify(message));
-              input.value = "";
-              statusDiv.textContent = "Message sent!";
-              console.log(`Sent message: ${rank} ${user}: ${text}`);
-            } catch (err) {
-              console.error("Error sending chat:", err.message);
-              statusDiv.textContent = `Error sending chat: ${err.message}`;
-            }
-          });
-        };
-        ws.onmessage = (event) => {
-          try {
-            console.log("Raw WebSocket message:", event.data);
-            const msg = JSON.parse(event.data);
-            console.log("Parsed WebSocket message:", msg);
-            if (msg.type === "chat" && msg.user && msg.rank && msg.text && msg.timestamp) {
-              // Clear initial placeholder if present
-              if (chatMessages.children.length === 1 && chatMessages.children[0].textContent === "Chat connected. Waiting for messages...") {
-                chatMessages.innerHTML = "";
+              await loadMessages();
+            } else if (msg.type === "delete") {
+              if (msg.index === undefined) {
+                console.warn("Invalid delete message:", msg);
+                return;
               }
-              const index = chatMessages.children.length;
-              const date = new Date(msg.timestamp);
-              const timeString = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
-              const p = document.createElement("p");
-              p.innerHTML = `<span class="rank-${msg.rank.toLowerCase()}">${msg.rank}: ${msg.user}</span> (${timeString}): ${msg.text}`;
-              if (window.solana?.publicKey?.toBase58() === ADMIN_WALLET) {
-                const deleteBtn = document.createElement("span");
-                deleteBtn.className = "delete-btn";
-                deleteBtn.textContent = "❌";
-                deleteBtn.onclick = () => {
-                  if (confirm("Are you sure you want to delete this message?")) {
-                    ws.send(JSON.stringify({ type: "delete", index }));
-                    p.remove();
-                  }
-                };
-                p.appendChild(deleteBtn);
-              }
-              chatMessages.appendChild(p);
-              chatMessages.scrollTop = chatMessages.scrollHeight;
-              console.log(`Displayed message: ${msg.rank} ${msg.user}: ${msg.text} at ${timeString}`);
-            } else if (msg.type === "delete" && msg.index !== undefined) {
-              const messages = chatMessages.children;
-              if (messages[msg.index]) {
-                messages[msg.index].remove();
-                console.log(`Deleted message at index ${msg.index}`);
-              }
-              if (chatMessages.children.length === 0) {
-                chatMessages.innerHTML = "<p>No messages available.</p>";
-              }
-            } else {
-              console.warn("Ignoring invalid WebSocket message:", msg);
+              await loadMessages();
             }
           } catch (err) {
-            console.error("Error parsing WebSocket message:", err.message);
-            statusDiv.textContent = `Error parsing message: ${err.message}`;
+            console.error("Error processing WebSocket message:", err);
           }
         };
-        ws.onclose = (e) => {
-          console.log("WebSocket closed:", e.code, e.reason);
-          statusDiv.textContent = `Chat server disconnected. Retrying (${retryCount + 1}/${MAX_RETRIES})...`;
-          if (retryCount < MAX_RETRIES) {
-            retryCount++;
-            setTimeout(() => connectWebSocket(rank, userAddress), RETRY_INTERVAL);
-          } else {
-            statusDiv.textContent = "Max retry attempts reached. Please click Retry or refresh the page.";
-            retryBtn.style.display = "block";
-          }
+        ws.onclose = () => {
+          console.log("WebSocket closed, retrying...");
+          statusDiv.textContent = "Chat disconnected. Retrying...";
+          retryCount++;
+          setTimeout(() => connectWebSocket(rank, userAddress), RETRY_INTERVAL);
         };
-        ws.onerror = (e) => {
-          console.error("WebSocket error:", e);
-          statusDiv.textContent = "Chat server error. Retrying in 10 seconds...";
+        ws.onerror = (err) => {
+          console.error("WebSocket error:", err);
+          statusDiv.textContent = "Chat connection error. Retrying...";
         };
       } catch (err) {
-        console.error("Error in connectWebSocket:", err.message);
-        statusDiv.textContent = `WebSocket error: ${err.message}`;
+        console.error("Error connecting WebSocket:", err);
+        statusDiv.textContent = `Error connecting to chat: ${err.message}`;
+        retryBtn.style.display = "block";
+      }
+    }
+
+    // Load chat messages
+    async function loadMessages() {
+      try {
+        const response = await fetch(`${BACKEND_URL}/messages`);
+        if (!response.ok) {
+          throw new Error(`HTTP error: ${response.status}`);
+        }
+        const messages = await response.json();
+        console.log("Loaded messages:", messages);
+        chatMessages.innerHTML = "";
+        messages.forEach((msg, index) => {
+          if (msg.type !== "chat" || !msg.user || !msg.rank || !msg.text || !msg.timestamp) return;
+          const messageDiv = document.createElement("div");
+          messageDiv.className = "chat-message";
+          const rankClass = `rank-${msg.rank.toLowerCase().replace(" ", "-")}`;
+          const isAdmin = currentUser === ADMIN_WALLET;
+          const isOwnMessage = msg.originalWallet === currentUser;
+          messageDiv.innerHTML = `
+            <div class="chat-user">
+              <span class="${rankClass}">${msg.rank}</span>
+              <span>${msg.user}</span>
+            </div>
+            <div class="chat-text">${msg.text}<hr>${new Date(msg.timestamp).toLocaleString()}</div>
+            ${(isAdmin || isOwnMessage) ? `<span class="delete-btn" data-index="${index}">Delete</span>` : ""}
+          `;
+          chatMessages.appendChild(messageDiv);
+        });
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        // Add delete event listeners
+        document.querySelectorAll(".delete-btn").forEach(btn => {
+          btn.addEventListener("click", async () => {
+            console.log("Delete button clicked:", btn.dataset.index);
+            try {
+              if (!ws || ws.readyState !== WebSocket.OPEN || !ws.isAuthenticated) {
+                statusDiv.textContent = "Chat not connected. Please try again.";
+                console.log("WebSocket not connected for delete");
+                return;
+              }
+              ws.send(JSON.stringify({
+                type: "delete",
+                index: parseInt(btn.dataset.index),
+                wallet: currentUser
+              }));
+              console.log("Sent delete message:", btn.dataset.index);
+            } catch (err) {
+              console.error("Error sending delete message:", err);
+              statusDiv.textContent = `Error deleting message: ${err.message}`;
+            }
+          });
+        });
+      } catch (err) {
+        console.error("Error loading messages:", err);
+        statusDiv.textContent = `Error loading messages: ${err.message}`;
+      }
+    }
+
+    // Send chat message
+    sendChatBtn.addEventListener("click", () => {
+      console.log("Send chat button clicked");
+      try {
+        const text = chatInput.value.trim();
+        const username = document.getElementById("username-display").textContent;
+        if (username === "Not set") {
+          statusDiv.textContent = "Please set a username before chatting.";
+          console.log("Username not set");
+          return;
+        }
+        if (!text || !ws || ws.readyState !== WebSocket.OPEN || !ws.isAuthenticated) {
+          statusDiv.textContent = !ws ? "Chat not connected." : "Please enter a message.";
+          console.log("Invalid chat conditions:", { text, ws });
+          return;
+        }
+        const message = {
+          type: "chat",
+          user: username,
+          rank: userRank,
+          text,
+          timestamp: new Date().toISOString(),
+          originalWallet: currentUser
+        };
+        ws.send(JSON.stringify(message));
+        console.log("Sent chat message:", message);
+        chatInput.value = "";
+      } catch (err) {
+        console.error("Error sending chat message:", err);
+        statusDiv.textContent = `Error sending message: ${err.message}`;
+      }
+    });
+
+    chatInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        console.log("Enter key pressed in chat input");
+        sendChatBtn.click();
+      }
+    });
+
+    // Load suggestions
+    async function loadSuggestions() {
+      try {
+        const response = await fetch(`${BACKEND_URL}/suggestions`);
+        if (!response.ok) {
+          throw new Error(`HTTP error: ${response.status}`);
+        }
+        const suggestions = await response.json();
+        console.log("Loaded suggestions:", suggestions);
+        suggestionsList.innerHTML = "";
+        const isAdmin = currentUser === ADMIN_WALLET;
+        suggestions.forEach((suggestion, index) => {
+          if (!isAdmin && suggestion.wallet !== currentUser) return; // Only show own suggestions unless admin
+          const suggestionP = document.createElement("p");
+          suggestionP.innerHTML = `
+            ${suggestion.username} (${suggestion.wallet.slice(0, 6)}...${suggestion.wallet.slice(-4)}): ${suggestion.suggestion}
+            ${(isAdmin || suggestion.wallet === currentUser) ? `<span class="delete-btn" data-index="${index}">Delete</span>` : ""}
+          `;
+          suggestionsList.appendChild(suggestionP);
+        });
+
+        // Add delete event listeners for suggestions
+        document.querySelectorAll(".delete-btn").forEach(btn => {
+          btn.addEventListener("click", async () => {
+            console.log("Delete suggestion button clicked:", btn.dataset.index);
+            try {
+              const response = await fetch(`${BACKEND_URL}/delete-suggestion`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ index: parseInt(btn.dataset.index), wallet: currentUser }),
+              });
+              if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error: ${response.status} - ${errorText}`);
+              }
+              const data = await response.json();
+              statusDiv.textContent = data.message;
+              console.log("Delete suggestion response:", data);
+              loadSuggestions();
+            } catch (err) {
+              console.error("Error deleting suggestion:", err);
+              statusDiv.textContent = `Error deleting suggestion: ${err.message}`;
+            }
+          });
+        });
+      } catch (err) {
+        console.error("Error loading suggestions:", err);
+        statusDiv.textContent = `Error loading suggestions: ${err.message}`;
       }
     }
 
     // Submit suggestion
-    async function submitSuggestion(publicKey, suggestion) {
-      console.log("Submitting suggestion:", { wallet: publicKey, suggestion });
+    submitSuggestionBtn.addEventListener("click", async () => {
+      console.log("Submit suggestion button clicked");
       try {
+        const suggestion = suggestionInput.value.trim();
+        if (!currentUser) {
+          statusDiv.textContent = "Please connect your wallet.";
+          console.log("No wallet connected");
+          return;
+        }
+        if (document.getElementById("username-display").textContent === "Not set") {
+          statusDiv.textContent = "Please set a username before submitting a suggestion.";
+          console.log("Username not set");
+          return;
+        }
         if (!suggestion) {
-          throw new Error("Please enter a suggestion.");
+          statusDiv.textContent = "Please enter a suggestion.";
+          console.log("No suggestion entered");
+          return;
         }
         const response = await fetch(`${BACKEND_URL}/submit-free-suggestion`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ wallet: publicKey, suggestion }),
+          body: JSON.stringify({ wallet: currentUser, suggestion }),
         });
         if (!response.ok) {
           const errorText = await response.text();
           throw new Error(`HTTP error: ${response.status} - ${errorText}`);
         }
         const data = await response.json();
-        console.log("Suggestion response:", data);
-        statusDiv.textContent = "Suggestion submitted successfully!";
-        return true;
+        statusDiv.textContent = data.message;
+        console.log("Submit suggestion response:", data);
+        suggestionInput.value = "";
+        loadSuggestions();
       } catch (err) {
-        console.error("Error submitting suggestion:", err.message);
+        console.error("Error submitting suggestion:", err);
         statusDiv.textContent = `Error submitting suggestion: ${err.message}`;
-        return false;
       }
-    }
+    });
 
-    // Load suggestions
-    async function loadSuggestions() {
-      console.log("Loading suggestions");
+    suggestionInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        console.log("Enter key pressed in suggestion input");
+        submitSuggestionBtn.click();
+      }
+    });
+
+    // Load rewards
+    async function loadRewards() {
       try {
-        const response = await fetch(`${BACKEND_URL}/suggestions`);
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`HTTP error: ${response.status} - ${errorText}`);
-        }
-        const suggestions = await response.json();
-        suggestionsList.innerHTML = "";
-        if (!Array.isArray(suggestions) || suggestions.length === 0) {
-          suggestionsList.innerHTML = "<p>No suggestions available.</p>";
-          console.log("No suggestions found");
+        if (!currentUser) {
+          statusDiv.textContent = "Please connect your wallet.";
+          console.log("No wallet connected");
           return;
         }
-        suggestions.forEach((sug, index) => {
-          const date = new Date(sug.timestamp);
-          const timeString = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
-          const p = document.createElement("p");
-          const displayName = sug.username || (sug.wallet ? sug.wallet.slice(0, 8) + '...' : "Anonymous");
-          p.innerHTML = `${displayName} (${timeString}): ${sug.suggestion}`;
-          if (window.solana?.publicKey?.toBase58() === ADMIN_WALLET) {
-            const deleteBtn = document.createElement("span");
-            deleteBtn.className = "delete-btn";
-            deleteBtn.textContent = "❌";
-            deleteBtn.onclick = () => {
-              if (confirm("Are you sure you want to delete this suggestion?")) {
-                p.remove();
-              }
-            };
-            p.appendChild(deleteBtn);
-          }
-          suggestionsList.appendChild(p);
-        });
-        suggestionsList.scrollTop = suggestionsList.scrollHeight;
-        console.log("Loaded suggestions:", suggestions.length);
-      } catch (err) {
-        console.error("Error loading suggestions:", err.message);
-        statusDiv.textContent = `Error loading suggestions: ${err.message}`;
-        suggestionsList.innerHTML = "<p>Failed to load suggestions. Please try again later.</p>";
-      }
-    }
-
-    // Get Solana connection
-    async function getConnection(attempt = 0) {
-      console.log("Attempting connection to RPC", attempt + 1, ":", RPC_ENDPOINTS[attempt]);
-      const rpc = RPC_ENDPOINTS[attempt];
-      try {
-        const connection = new solanaWeb3.Connection(rpc, { commitment: "confirmed", disableRetryOnRateLimit: false });
-        await connection.getSlot();
-        console.log(`Connected to RPC: ${rpc}`);
-        return connection;
-      } catch (err) {
-        console.error(`RPC ${rpc} failed:`, err.message);
-        if (attempt < RPC_ENDPOINTS.length - 1) {
-          return getConnection(attempt + 1);
-        }
-        throw new Error("All RPC endpoints failed.");
-      }
-    }
-
-    // Update VIP info
-    async function updateVipInfo(publicKey, connection) {
-      console.log("Updating VIP info for:", publicKey.toBase58());
-      try {
-        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-          publicKey,
-          { mint: TOKEN_MINT, programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") }
-        );
-        let tokenBalance = 0;
-        for (const { account } of tokenAccounts.value) {
-          if (account.data.parsed.info.mint === TOKEN_MINT.toBase58()) {
-            tokenBalance = parseFloat(account.data.parsed.info.tokenAmount.uiAmount);
-            break;
-          }
-        }
-        document.getElementById("vip-balance").textContent = tokenBalance.toLocaleString();
-        const rank = tokenBalance >= 1000000 ? "Rhodium" :
-                     tokenBalance >= 750000 ? "Platinum" :
-                     tokenBalance >= 500000 ? "Gold" :
-                     tokenBalance >= 250000 ? "Silver" :
-                     tokenBalance >= 100000 ? "Bronze" : "No Rank";
-        document.getElementById("vip-rank").textContent = rank;
-        console.log("VIP info updated:", { balance: tokenBalance, rank });
-        return { balance: tokenBalance, rank };
-      } catch (err) {
-        console.error("Failed to update VIP info:", err.message);
-        statusDiv.textContent = `Error fetching balance: ${err.message}`;
-        return { balance: 0, rank: "No Rank" };
-      }
-    }
-
-    // Load username
-    async function loadUsername(publicKey) {
-      console.log("Fetching username for:", publicKey.toBase58());
-      try {
-        const response = await fetch(`${BACKEND_URL}/users`);
+        const response = await fetch(`${BACKEND_URL}/rewards/${currentUser}`);
         if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`HTTP error: ${response.status} - ${errorText}`);
+          throw new Error(`HTTP error: ${response.status}`);
         }
-        const users = await response.json();
-        const username = users[publicKey.toBase58()] || "Not set";
-        document.getElementById("username-display").textContent = username;
-        console.log("Loaded username:", username);
-        if (username !== "Not set" && publicKey.toBase58() !== ADMIN_WALLET) {
-          console.log("Disabling set username button for non-admin");
-          setUsernameBtn.textContent = "Username Set";
-          setUsernameBtn.disabled = true;
-          usernameInput.style.display = "none";
-        } else if (publicKey.toBase58() === ADMIN_WALLET) {
-          console.log("Setting button to Change Username for admin");
-          setUsernameBtn.textContent = "Change Username";
-          setUsernameBtn.disabled = false;
-        } else {
-          console.log("Setting button to Set Username for new user");
-          setUsernameBtn.textContent = "Set Username";
-          setUsernameBtn.disabled = false;
-          usernameInput.style.display = "none";
-        }
-        return username;
+        const { balance, dailyReward, canClaim } = await response.json();
+        console.log("Loaded rewards:", { balance, dailyReward, canClaim });
+        rewardsList.innerHTML = `
+          <tr>
+            <td>${balance.toLocaleString()} SMM</td>
+            <td>${dailyReward.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} SMM</td>
+            <td>${canClaim ? "Claimable" : "Already Claimed (Next: " + new Date(Date.now() + (24 * 60 * 60 * 1000 - (Date.now() - (await getLastClaimTime())))).toLocaleString() + ")"}</td>
+            <td><button class="retry-button claim-reward-btn" ${!canClaim ? "disabled" : ""}>Claim Reward</button></td>
+          </tr>
+        `;
+        document.querySelectorAll(".claim-reward-btn").forEach(btn => {
+          btn.addEventListener("click", async () => {
+            console.log("Claim reward button clicked");
+            try {
+              const response = await fetch(`${BACKEND_URL}/claim-reward`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ walletAddress: currentUser }),
+              });
+              if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error: ${response.status} - ${errorText}`);
+              }
+              const data = await response.json();
+              statusDiv.textContent = `Claimed ${data.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} SMM! Transaction: ${data.signature}`;
+              console.log("Claim reward response:", data);
+              loadRewards();
+            } catch (err) {
+              console.error("Error claiming reward:", err);
+              statusDiv.textContent = `Error claiming reward: ${err.message}`;
+            }
+          });
+        });
       } catch (err) {
-        console.error("Error loading username:", err.message);
-        statusDiv.textContent = `Error loading username: ${err.message}`;
-        return "Not set";
+        console.error("Error loading rewards:", err);
+        statusDiv.textContent = `Error loading rewards: ${err.message}`;
       }
     }
 
-    // Check VIP access
-    async function checkVipAccess() {
-      console.log("Checking VIP access");
+    // Helper to get last claim time
+    async function getLastClaimTime() {
       try {
-        if (!window.solana || !window.solana.isPhantom) {
-          statusDiv.textContent = "Phantom Wallet required. Please install Phantom.";
-          retryBtn.style.display = "none";
-          alert("Phantom Wallet is required to access the VIP Zone. Please install it from https://phantom.app.");
-          window.open("https://phantom.app/", "_blank");
-          console.log("No Phantom wallet detected");
-          return false;
-        }
-
-        const provider = window.solana;
-        let publicKey;
-
-        console.log("Checking wallet connection status");
-        try {
-          const resp = await provider.connect();
-          publicKey = resp.publicKey;
-          console.log("Wallet connected:", publicKey.toBase58());
-        } catch (err) {
-          console.error("Wallet connection failed:", err.message);
-          statusDiv.textContent = "Please connect your Phantom wallet.";
-          retryBtn.style.display = "block";
-          return false;
-        }
-
-        const storedPublicKey = sessionStorage.getItem("smmPublicKey");
-        const isVerified = sessionStorage.getItem("smmVipVerified") === "true";
-
-        if (isVerified && storedPublicKey === publicKey.toBase58()) {
-          console.log("VIP access verified via sessionStorage");
-          statusDiv.textContent = "VIP access granted!";
-        } else {
-          statusDiv.textContent = `Connected: ${publicKey.toBase58().slice(0, 6)}... Checking SMM token balance...`;
-          const connection = await getConnection();
-          const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-            publicKey,
-            {
-              mint: TOKEN_MINT,
-              programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
-            }
-          );
-
-          let tokenBalance = 0;
-          for (const { account } of tokenAccounts.value) {
-            const info = account.data.parsed.info;
-            if (info.mint === TOKEN_MINT.toBase58()) {
-              tokenBalance = parseFloat(info.tokenAmount.uiAmount);
-              break;
-            }
-          }
-
-          if (tokenBalance < VIP_MINIMUM) {
-            statusDiv.textContent = `Access denied: You need at least ${VIP_MINIMUM.toLocaleString()} SMM tokens. Current balance: ${tokenBalance.toLocaleString()} SMM.`;
-            retryBtn.style.display = "block";
-            sessionStorage.removeItem("smmVipVerified");
-            sessionStorage.removeItem("smmPublicKey");
-            console.log("Insufficient SMM balance:", tokenBalance);
-            return false;
-          }
-
-          sessionStorage.setItem("smmVipVerified", "true");
-          sessionStorage.setItem("smmPublicKey", publicKey.toBase58());
-          statusDiv.textContent = "VIP access granted!";
-        }
-
-        console.log("Initializing UI for:", publicKey.toBase58());
-        const connection = await getConnection();
-        const { rank } = await updateVipInfo(publicKey, connection);
-        await loadUsername(publicKey);
-        await loadSuggestions();
-        connectWebSocket(rank, publicKey.toBase58().slice(0, 6));
-        console.log("UI initialization complete");
-
-        // Update submit-suggestion handler
-        document.getElementById("submit-suggestion").replaceWith(document.getElementById("submit-suggestion").cloneNode(true));
-        document.getElementById("submit-suggestion").addEventListener("click", async () => {
-          console.log("Submit suggestion button clicked");
-          try {
-            const suggestion = suggestionInput.value.trim();
-            console.log("Submit suggestion inputs:", { suggestion });
-            if (!suggestion) {
-              statusDiv.textContent = "Please enter a suggestion.";
-              console.log("Invalid suggestion input");
-              return;
-            }
-            const user = window.solana?.publicKey;
-            if (!user) {
-              statusDiv.textContent = "Please connect your wallet.";
-              console.log("No wallet connected for suggestion");
-              return;
-            }
-            console.log("Submitting suggestion:", { wallet: user.toBase58(), suggestion });
-            const success = await submitSuggestion(user.toBase58(), suggestion);
-            if (success) {
-              statusDiv.textContent = "Suggestion submitted successfully!";
-              suggestionInput.value = "";
-              await loadSuggestions();
-            }
-          } catch (err) {
-            console.error("Error submitting suggestion:", err.message);
-            statusDiv.textContent = `Error submitting suggestion: ${err.message}`;
-          }
-        });
-
-        // Update chat input enter key
-        document.getElementById("chat-input").addEventListener("keypress", (e) => {
-          if (e.key === "Enter") {
-            console.log("Enter key pressed in chat input");
-            document.getElementById("send-chat").click();
-          }
-        });
-
-        return true;
+        const response = await fetch(`${BACKEND_URL}/rewards/${currentUser}`);
+        const { lastClaim } = await response.json();
+        return lastClaim || 0;
       } catch (err) {
-        console.error("VIP access check failed:", err.message);
-        statusDiv.textContent = `Could not verify SMM balance: ${err.message}`;
-        retryBtn.style.display = "block";
-        return false;
+        console.error("Error fetching last claim time:", err);
+        return 0;
       }
     }
 
     // Retry connection
-    retryBtn.addEventListener("click", async () => {
+    retryBtn.addEventListener("click", () => {
       console.log("Retry button clicked");
-      try {
-        retryBtn.style.display = "none";
-        statusDiv.textContent = "";
-        await checkVipAccess();
-      } catch (err) {
-        console.error("Error retrying connection:", err.message);
-        statusDiv.textContent = `Error retrying connection: ${err.message}`;
-      }
+      retryCount = 0;
+      retryBtn.style.display = "none";
+      checkWallet();
     });
 
-    // Page load
-    window.addEventListener("load", async () => {
-      console.log("Page loaded, initiating VIP access check");
-      try {
-        const hasAccess = await checkVipAccess();
-        if (!hasAccess && !retryBtn.style.display) {
-          statusDiv.textContent = statusDiv.textContent || "Redirecting to main page...";
-          setTimeout(() => window.location.href = "index.html", 3000);
-        }
-      } catch (err) {
-        console.error("Error on page load:", err.message);
-        statusDiv.textContent = `Error loading page: ${err.message}`;
-      }
-    });
+    // Initial wallet check
+    checkWallet();
   </script>
 </body>
 </html>
