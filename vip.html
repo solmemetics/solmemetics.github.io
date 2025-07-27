@@ -180,8 +180,7 @@
       justify-content: space-between;
       align-items: center;
       font-size: 14px;
-      transition: background 0.2s ease;
-      word-wrap: break-word;
+      word-break: break-word;
       max-width: 90%;
       margin-left: auto;
     }
@@ -201,6 +200,40 @@
       margin-right: 8px;
       object-fit: cover;
     }
+    .username {
+      position: relative;
+      cursor: pointer;
+    }
+    .username:hover .tooltip {
+      display: block;
+    }
+    .tooltip {
+      display: none;
+      position: absolute;
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--card-bg);
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 10px;
+      z-index: 10;
+      width: 200px;
+      text-align: center;
+      box-shadow: 0 4px 10px var(--shadow);
+    }
+    .tooltip img {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      margin-bottom: 5px;
+    }
+    .tooltip p {
+      margin: 5px 0;
+      font-size: 12px;
+      color: var(--text);
+      word-break: break-word;
+    }
     #suggestions-list {
       max-height: 400px;
       overflow-y: auto;
@@ -218,7 +251,7 @@
       justify-content: space-between;
       align-items: center;
       font-size: 14px;
-      word-wrap: break-word;
+      word-break: break-word;
       max-width: 90%;
     }
     #suggestions-list .avatar {
@@ -238,7 +271,7 @@
     .delete-btn:hover, .pin-btn:hover {
       color: #cc0000;
     }
-    #suggestion-input, #poll-question, #poll-option {
+    #suggestion-input, #poll-question, #poll-option, #bio-input {
       width: 100%;
       padding: 12px;
       border: none;
@@ -248,11 +281,11 @@
       font-size: 16px;
       margin-bottom: 10px;
     }
-    #suggestion-input:focus, #poll-question:focus, #poll-option:focus {
+    #suggestion-input:focus, #poll-question:focus, #poll-option:focus, #bio-input:focus {
       box-shadow: 0 0 10px var(--highlight);
       outline: none;
     }
-    #submit-suggestion, #set-username-btn, #upload-avatar-btn, #create-poll-btn, #vote-btn {
+    #submit-suggestion, #set-username-btn, #upload-avatar-btn, #set-bio-btn, #create-poll-btn, #vote-btn {
       padding: 12px 24px;
       background: var(--button-bg);
       border: none;
@@ -262,11 +295,11 @@
       cursor: pointer;
       transition: all 0.3s ease;
     }
-    #submit-suggestion:hover, #set-username-btn:hover, #upload-avatar-btn:hover, #create-poll-btn:hover, #vote-btn:hover {
+    #submit-suggestion:hover, #set-username-btn:hover, #upload-avatar-btn:hover, #set-bio-btn:hover, #create-poll-btn:hover, #vote-btn:hover {
       background: var(--button-hover);
       transform: translateY(-2px);
     }
-    #username-input, #avatar-input {
+    #username-input, #avatar-input, #bio-input {
       display: none;
       width: 100%;
       padding: 12px;
@@ -335,6 +368,9 @@
       <p>Username: <span id="username-display">Not set</span></p>
       <button id="set-username-btn" class="retry-button">Set Username</button>
       <input id="username-input" type="text" placeholder="Set username...">
+      <p>Bio: <span id="bio-display">Not set</span></p>
+      <button id="set-bio-btn" class="retry-button">Set Bio</button>
+      <input id="bio-input" type="text" placeholder="Set bio (max 100 chars)...">
       <button id="upload-avatar-btn" class="retry-button">Upload Avatar</button>
       <input id="avatar-input" type="file" accept="image/*">
     </div>
@@ -390,6 +426,7 @@
     let retryCount = 0;
     const MAX_RETRIES = 5;
     const RETRY_INTERVAL = 10000;
+    const MAX_MESSAGE_LENGTH = 64;
 
     const RPC_ENDPOINTS = [
       "https://silent-fluent-diamond.solana-mainnet.quiknode.pro/bdf6a6133f8736f5bf9097f4628841fe18b60bcc",
@@ -407,6 +444,8 @@
     const suggestionInput = document.getElementById("suggestion-input");
     const uploadAvatarBtn = document.getElementById("upload-avatar-btn");
     const avatarInput = document.getElementById("avatar-input");
+    const setBioBtn = document.getElementById("set-bio-btn");
+    const bioInput = document.getElementById("bio-input");
     const pollQuestion = document.getElementById("poll-question");
     const pollOption = document.getElementById("poll-option");
     const createPollBtn = document.getElementById("create-poll-btn");
@@ -446,7 +485,7 @@
       if (usernameInput.style.display === "none" && (currentUsername === "Not set" || isAdmin)) {
         usernameInput.style.display = "block";
         usernameInput.focus();
-        setUsernameBtn.textContent = "Confirm";
+        setUsernameBtn.textContent = "Confirm Username";
       } else if (usernameInput.style.display === "block") {
         const username = usernameInput.value.trim();
         if (!username) {
@@ -475,6 +514,51 @@
       if (e.key === "Enter") setUsernameBtn.click();
     });
 
+    // Bio setting
+    setBioBtn.addEventListener("click", async () => {
+      const currentBio = document.getElementById("bio-display").textContent;
+      const isAdmin = window.solana?.publicKey?.toBase58() === ADMIN_WALLET;
+      const user = window.solana?.publicKey?.toBase58();
+      if (!user) {
+        statusDiv.textContent = "Please connect your wallet.";
+        return;
+      }
+      if (bioInput.style.display === "none" && (currentBio === "Not set" || isAdmin)) {
+        bioInput.style.display = "block";
+        bioInput.focus();
+        setBioBtn.textContent = "Confirm Bio";
+      } else if (bioInput.style.display === "block") {
+        const bio = bioInput.value.trim();
+        if (!bio) {
+          statusDiv.textContent = "Please enter a bio.";
+          return;
+        }
+        if (bio.length > 100) {
+          statusDiv.textContent = "Bio must be 100 characters or less.";
+          return;
+        }
+        const response = await fetch(`${BACKEND_URL}/set-bio`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ wallet: user, bio }),
+        });
+        if (!response.ok) {
+          statusDiv.textContent = `Error: ${await response.text()}`;
+          return;
+        }
+        document.getElementById("bio-display").textContent = bio;
+        statusDiv.textContent = "Bio set successfully!";
+        bioInput.style.display = "none";
+        bioInput.value = "";
+        setBioBtn.textContent = isAdmin ? "Change Bio" : "Bio Set";
+        if (!isAdmin) setBioBtn.disabled = true;
+      }
+    });
+
+    bioInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") setBioBtn.click();
+    });
+
     // Avatar upload
     uploadAvatarBtn.addEventListener("click", () => {
       const isAdmin = window.solana?.publicKey?.toBase58() === ADMIN_WALLET;
@@ -485,8 +569,8 @@
       }
       if (avatarInput.style.display === "none") {
         avatarInput.style.display = "block";
-        avatarInput.focus();
-        uploadAvatarBtn.textContent = "Upload";
+        avatarInput.click(); // Trigger file picker
+        uploadAvatarBtn.textContent = "Confirm Avatar";
       } else {
         const file = avatarInput.files[0];
         if (!file) {
@@ -510,7 +594,7 @@
               avatarInput.value = "";
               uploadAvatarBtn.textContent = isAdmin ? "Change Avatar" : "Avatar Set";
               if (!isAdmin) uploadAvatarBtn.disabled = true;
-              loadUsername(window.solana.publicKey); // Reload to display avatar
+              loadUsername(window.solana.publicKey); // Reload to update avatar
             }
           })
           .catch(err => {
@@ -535,12 +619,15 @@
         document.getElementById("send-chat").replaceWith(document.getElementById("send-chat").cloneNode(true));
         document.getElementById("send-chat").addEventListener("click", () => {
           const input = document.getElementById("chat-input");
-          const text = input.value.trim();
+          let text = input.value.trim();
           if (!text || !ws || ws.readyState !== WebSocket.OPEN || !ws.isAuthenticated) {
             statusDiv.textContent = !ws ? "No WebSocket connection." :
                                   ws.readyState !== WebSocket.OPEN ? "WebSocket not connected." :
                                   !ws.isAuthenticated ? "Not connected to chat." : "Enter a valid message.";
             return;
+          }
+          if (text.length > MAX_MESSAGE_LENGTH) {
+            text = text.slice(0, MAX_MESSAGE_LENGTH);
           }
           const user = window.solana?.publicKey?.toBase58() || "Anon";
           const rank = document.getElementById("vip-rank").textContent;
@@ -552,18 +639,17 @@
         const pinBtn = document.getElementById("pin-message-btn");
         if (window.solana?.publicKey?.toBase58() === ADMIN_WALLET) {
           pinBtn.style.display = "block";
-          pinBtn.replaceWith(pinBtn.cloneNode(true));
-          document.getElementById("poll-question").style.display = "block";
-          document.getElementById("poll-option").style.display = "block";
-          document.getElementById("create-poll-btn").style.display = "block";
+          pollQuestion.style.display = "block";
+          pollOption.style.display = "block";
+          createPollBtn.style.display = "block";
         } else {
           pinBtn.style.display = "none";
-          document.getElementById("poll-question").style.display = "none";
-          document.getElementById("poll-option").style.display = "none";
-          document.getElementById("create-poll-btn").style.display = "none";
+          pollQuestion.style.display = "none";
+          pollOption.style.display = "none";
+          createPollBtn.style.display = "none";
         }
       };
-      ws.onmessage = (event) => {
+      ws.onmessage = async (event) => {
         try {
           const msg = JSON.parse(event.data);
           if (msg.type === "chat" && msg.user && msg.rank && msg.text && msg.timestamp) {
@@ -576,7 +662,8 @@
             const p = document.createElement("p");
             if (msg.pinned) p.classList.add("pinned");
             const avatarImg = msg.avatar ? `<img src="${msg.avatar}" class="avatar" alt="Avatar">` : "";
-            p.innerHTML = `${avatarImg}<span class="rank-${msg.rank.toLowerCase()}">${msg.rank}: ${msg.user} (${timeString})</span>: ${msg.text}`;
+            const tooltip = msg.avatar || msg.bio ? `<div class="tooltip">${msg.avatar ? `<img src="${msg.avatar}" alt="Avatar">` : ''}<p>${msg.bio || "No bio set"}</p></div>` : "";
+            p.innerHTML = `${avatarImg}<span class="username rank-${msg.rank.toLowerCase()}">${msg.rank}: ${msg.user} (${timeString})${tooltip}</span>: ${msg.text}`;
             const currentUser = window.solana?.publicKey?.toBase58();
             if (currentUser === ADMIN_WALLET || currentUser === msg.originalWallet) {
               const deleteBtn = document.createElement("span");
@@ -835,7 +922,7 @@
       }
     }
 
-    // Load username
+    // Load username and bio
     async function loadUsername(publicKey) {
       try {
         const response = await fetch(`${BACKEND_URL}/users`);
@@ -843,25 +930,31 @@
           throw new Error(`HTTP error: ${await response.text()}`);
         }
         const users = await response.json();
-        const userData = users[publicKey.toBase58()] || { username: "Not set", avatar: null };
+        const userData = users[publicKey.toBase58()] || { username: "Not set", avatar: null, bio: "Not set" };
         document.getElementById("username-display").textContent = userData.username;
+        document.getElementById("bio-display").textContent = userData.bio;
         if (userData.username !== "Not set" && publicKey.toBase58() !== ADMIN_WALLET) {
           setUsernameBtn.textContent = "Username Set";
+          setBioBtn.textContent = "Bio Set";
+          uploadAvatarBtn.textContent = userData.avatar ? "Avatar Set" : "Upload Avatar";
           setUsernameBtn.disabled = true;
-          uploadAvatarBtn.textContent = "Avatar Set";
-          uploadAvatarBtn.disabled = true;
+          setBioBtn.disabled = true;
+          uploadAvatarBtn.disabled = userData.avatar ? true : false;
           usernameInput.style.display = "none";
+          bioInput.style.display = "none";
           avatarInput.style.display = "none";
         } else if (publicKey.toBase58() === ADMIN_WALLET) {
           setUsernameBtn.textContent = "Change Username";
+          setBioBtn.textContent = "Change Bio";
           uploadAvatarBtn.textContent = userData.avatar ? "Change Avatar" : "Upload Avatar";
           setUsernameBtn.disabled = false;
+          setBioBtn.disabled = false;
           uploadAvatarBtn.disabled = false;
         }
         return userData;
       } catch (err) {
-        statusDiv.textContent = `Error loading username: ${err.message}`;
-        return { username: "Not set", avatar: null };
+        statusDiv.textContent = `Error loading user data: ${err.message}`;
+        return { username: "Not set", avatar: null, bio: "Not set" };
       }
     }
 
