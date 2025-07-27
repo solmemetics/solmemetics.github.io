@@ -5,9 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Solmemetics VIP Zone</title>
   <style>
+    :root {
+      --bg: linear-gradient(135deg, #1a1a1a, #2c2c2c);
+      --text: #fff;
+      --card-bg: #1a1a1a;
+      --input-bg: #333;
+      --button-bg: #ff4d4d;
+      --button-hover: #cc0000;
+      --shadow: rgba(0, 0, 0, 0.7);
+      --highlight: rgba(255, 77, 77, 0.5);
+    }
+    [data-theme="light"] {
+      --bg: linear-gradient(135deg, #f5f5f5, #e0e0e0);
+      --text: #333;
+      --card-bg: #fff;
+      --input-bg: #e0e0e0;
+      --button-bg: #ff4d4d;
+      --button-hover: #cc0000;
+      --shadow: rgba(0, 0, 0, 0.2);
+      --highlight: rgba(255, 77, 77, 0.3);
+    }
     body {
-      background: linear-gradient(135deg, #1a1a1a, #2c2c2c);
-      color: #fff;
+      background: var(--bg);
+      color: var(--text);
       font-family: 'Inter', sans-serif;
       min-height: 100vh;
       display: flex;
@@ -22,7 +42,7 @@
       font-size: 36px;
       font-weight: 800;
       margin: 10px 0;
-      text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+      text-shadow: 0 0 10px var(--highlight);
     }
     .subtitle {
       font-size: 18px;
@@ -31,26 +51,42 @@
       color: #ff4d4d;
       animation: fadeIn 1s ease-in;
     }
-    img {
+    img.logo {
       max-width: 150px;
       margin-bottom: 10px;
       transition: transform 0.3s ease;
     }
-    img:hover {
+    img.logo:hover {
       transform: scale(1.1);
+    }
+    .theme-toggle {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      padding: 10px;
+      background: var(--button-bg);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .theme-toggle:hover {
+      background: var(--button-hover);
+      transform: translateY(-2px);
     }
     .tab-nav {
       display: flex;
       gap: 10px;
       margin-bottom: 20px;
-      background: #222;
+      background: var(--card-bg);
       padding: 10px;
       border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 4px 10px var(--shadow);
     }
     .tab-button {
       padding: 12px 24px;
-      background: #ff4d4d;
+      background: var(--button-bg);
       border: none;
       border-radius: 8px;
       color: #fff;
@@ -63,23 +99,23 @@
       transform: translateY(-2px);
     }
     .tab-button.active {
-      background: #cc0000;
+      background: var(--button-hover);
       box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.3);
     }
     .tab-content {
       display: none;
       width: 100%;
       max-width: 900px;
-      background: #1a1a1a;
+      background: var(--card-bg);
       padding: 20px;
       border-radius: 12px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7);
+      box-shadow: 0 4px 15px var(--shadow);
       animation: slideIn 0.5s ease;
     }
     .tab-content.active {
       display: block;
     }
-    #vip-info, #chat-container, #suggestions-container {
+    #vip-info, #chat-container, #suggestions-container, #polls-container {
       margin-top: 0;
     }
     #vip-balance, #vip-rank, #username-display {
@@ -95,7 +131,7 @@
       flex: 2;
       max-height: 400px;
       overflow-y: auto;
-      background: #222;
+      background: var(--card-bg);
       padding: 15px;
       border-radius: 8px;
       border: 1px solid #444;
@@ -105,23 +141,25 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
+      border-left: 2px solid #ff4d4d;
+      padding-left: 20px;
     }
     #chat-input {
       padding: 12px;
       border: none;
       border-radius: 8px;
-      background: #333;
-      color: #fff;
+      background: var(--input-bg);
+      color: var(--text);
       font-size: 16px;
       transition: box-shadow 0.3s ease;
     }
     #chat-input:focus {
-      box-shadow: 0 0 10px rgba(255, 77, 77, 0.5);
+      box-shadow: 0 0 10px var(--highlight);
       outline: none;
     }
-    #send-chat {
+    #send-chat, #pin-message-btn {
       padding: 12px;
-      background: #ff4d4d;
+      background: var(--button-bg);
       border: none;
       border-radius: 8px;
       color: #fff;
@@ -129,28 +167,44 @@
       cursor: pointer;
       transition: all 0.3s ease;
     }
-    #send-chat:hover {
-      background: #cc0000;
+    #send-chat:hover, #pin-message-btn:hover {
+      background: var(--button-hover);
       transform: translateY(-2px);
     }
     #chat-messages p {
       margin: 8px 0;
       padding: 10px;
-      background: #2a2a2a;
+      background: var(--input-bg);
       border-radius: 5px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       font-size: 14px;
       transition: background 0.2s ease;
+      word-wrap: break-word;
+      max-width: 90%;
+      margin-left: auto;
+    }
+    #chat-messages p.pinned {
+      background: #ff4d4d;
+      color: #fff;
+      font-weight: 600;
+      border: 1px solid #cc0000;
     }
     #chat-messages p:hover {
-      background: #333;
+      background: #444;
+    }
+    #chat-messages .avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      margin-right: 8px;
+      object-fit: cover;
     }
     #suggestions-list {
       max-height: 400px;
       overflow-y: auto;
-      background: #222;
+      background: var(--card-bg);
       padding: 15px;
       border-radius: 8px;
       border: 1px solid #444;
@@ -158,39 +212,49 @@
     #suggestions-list p {
       margin: 8px 0;
       padding: 10px;
-      background: #2a2a2a;
+      background: var(--input-bg);
       border-radius: 5px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       font-size: 14px;
+      word-wrap: break-word;
+      max-width: 90%;
     }
-    .delete-btn {
+    #suggestions-list .avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      margin-right: 8px;
+      object-fit: cover;
+    }
+    .delete-btn, .pin-btn {
       color: #ff4d4d;
       cursor: pointer;
       font-size: 16px;
       transition: color 0.2s ease;
+      margin-left: 8px;
     }
-    .delete-btn:hover {
+    .delete-btn:hover, .pin-btn:hover {
       color: #cc0000;
     }
-    #suggestion-input {
+    #suggestion-input, #poll-question, #poll-option {
       width: 100%;
       padding: 12px;
       border: none;
       border-radius: 8px;
-      background: #333;
-      color: #fff;
+      background: var(--input-bg);
+      color: var(--text);
       font-size: 16px;
       margin-bottom: 10px;
     }
-    #suggestion-input:focus {
-      box-shadow: 0 0 10px rgba(255, 77, 77, 0.5);
+    #suggestion-input:focus, #poll-question:focus, #poll-option:focus {
+      box-shadow: 0 0 10px var(--highlight);
       outline: none;
     }
-    #submit-suggestion, #set-username-btn {
+    #submit-suggestion, #set-username-btn, #upload-avatar-btn, #create-poll-btn, #vote-btn {
       padding: 12px 24px;
-      background: #ff4d4d;
+      background: var(--button-bg);
       border: none;
       border-radius: 8px;
       color: #fff;
@@ -198,20 +262,35 @@
       cursor: pointer;
       transition: all 0.3s ease;
     }
-    #submit-suggestion:hover, #set-username-btn:hover {
-      background: #cc0000;
+    #submit-suggestion:hover, #set-username-btn:hover, #upload-avatar-btn:hover, #create-poll-btn:hover, #vote-btn:hover {
+      background: var(--button-hover);
       transform: translateY(-2px);
     }
-    #username-input {
+    #username-input, #avatar-input {
       display: none;
       width: 100%;
       padding: 12px;
       border: none;
       border-radius: 8px;
-      background: #333;
-      color: #fff;
+      background: var(--input-bg);
+      color: var(--text);
       font-size: 16px;
       margin-top: 10px;
+    }
+    #poll-list {
+      max-height: 400px;
+      overflow-y: auto;
+      background: var(--card-bg);
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #444;
+    }
+    #poll-list p {
+      margin: 8px 0;
+      padding: 10px;
+      background: var(--input-bg);
+      border-radius: 5px;
+      font-size: 14px;
     }
     #status {
       margin-top: 20px;
@@ -237,7 +316,8 @@
   <script src="https://unpkg.com/@solana/web3.js@1.98.2/lib/index.iife.min.js"></script>
 </head>
 <body>
-  <img src="/images/smm.png" alt="SMM Logo" />
+  <button class="theme-toggle" id="theme-toggle">🌙</button>
+  <img src="/images/smm.png" alt="SMM Logo" class="logo" />
   <h1>Solmemetics VIP Zone</h1>
   <p class="subtitle">Next update, Streamflow staking!</p>
 
@@ -245,6 +325,7 @@
     <button class="tab-button active" data-tab="info">Profile</button>
     <button class="tab-button" data-tab="chat">Chat</button>
     <button class="tab-button" data-tab="suggestions">Suggestions</button>
+    <button class="tab-button" data-tab="polls">Polls</button>
   </div>
 
   <div id="info" class="tab-content active">
@@ -254,6 +335,8 @@
       <p>Username: <span id="username-display">Not set</span></p>
       <button id="set-username-btn" class="retry-button">Set Username</button>
       <input id="username-input" type="text" placeholder="Set username...">
+      <button id="upload-avatar-btn" class="retry-button">Upload Avatar</button>
+      <input id="avatar-input" type="file" accept="image/*">
     </div>
   </div>
   <div id="chat" class="tab-content">
@@ -262,6 +345,7 @@
       <div id="chat-input-container">
         <input id="chat-input" type="text" placeholder="Type a message...">
         <button id="send-chat" class="retry-button">Send</button>
+        <button id="pin-message-btn" class="retry-button" style="display: none;">Pin Message</button>
       </div>
     </div>
   </div>
@@ -272,6 +356,15 @@
       <button id="submit-suggestion" class="retry-button">Submit Suggestion</button>
     </div>
   </div>
+  <div id="polls" class="tab-content">
+    <div id="polls-container">
+      <div id="poll-list"></div>
+      <input id="poll-question" type="text" placeholder="Poll question (admin only)...">
+      <input id="poll-option" type="text" placeholder="Add option (admin only, comma-separated)...">
+      <button id="create-poll-btn" class="retry-button">Create Poll</button>
+      <button id="vote-btn" class="retry-button">Vote</button>
+    </div>
+  </div>
 
   <div id="status"></div>
   <button id="retry" class="retry-button" style="display: none;">Retry Connection</button>
@@ -279,12 +372,12 @@
   <script>
     window.onerror = (msg, url, line, col, error) => {
       console.error(`Uncaught error: ${msg} at ${url}:${line}:${col}`, error);
-      document.getElementById("status").textContent = `Error: ${msg}. Please refresh the page.`;
+      document.getElementById("status").textContent = `Error: ${msg}. Please refresh.`;
     };
 
     if (typeof solanaWeb3 === 'undefined') {
       console.error("solanaWeb3 is not defined.");
-      document.getElementById("status").textContent = "Error: Failed to load Solana library. Please refresh the page.";
+      document.getElementById("status").textContent = "Error: Failed to load Solana library.";
       throw new Error("solanaWeb3 not defined");
     }
 
@@ -308,9 +401,28 @@
     const retryBtn = document.getElementById("retry");
     const chatMessages = document.getElementById("chat-messages");
     const suggestionsList = document.getElementById("suggestions-list");
+    const pollList = document.getElementById("poll-list");
     const setUsernameBtn = document.getElementById("set-username-btn");
     const usernameInput = document.getElementById("username-input");
     const suggestionInput = document.getElementById("suggestion-input");
+    const uploadAvatarBtn = document.getElementById("upload-avatar-btn");
+    const avatarInput = document.getElementById("avatar-input");
+    const pollQuestion = document.getElementById("poll-question");
+    const pollOption = document.getElementById("poll-option");
+    const createPollBtn = document.getElementById("create-poll-btn");
+    const voteBtn = document.getElementById("vote-btn");
+
+    // Theme toggle
+    const themeToggle = document.getElementById("theme-toggle");
+    themeToggle.addEventListener("click", () => {
+      const currentTheme = document.body.dataset.theme === "light" ? "dark" : "light";
+      document.body.dataset.theme = currentTheme;
+      themeToggle.textContent = currentTheme === "light" ? "🌙" : "☀";
+      localStorage.setItem("theme", currentTheme);
+    });
+    const savedTheme = localStorage.getItem("theme") || "dark";
+    document.body.dataset.theme = savedTheme;
+    themeToggle.textContent = savedTheme === "light" ? "🌙" : "☀";
 
     // Tab functionality
     document.querySelectorAll(".tab-button").forEach(button => {
@@ -363,6 +475,50 @@
       if (e.key === "Enter") setUsernameBtn.click();
     });
 
+    // Avatar upload
+    uploadAvatarBtn.addEventListener("click", () => {
+      const isAdmin = window.solana?.publicKey?.toBase58() === ADMIN_WALLET;
+      const user = window.solana?.publicKey?.toBase58();
+      if (!user) {
+        statusDiv.textContent = "Please connect your wallet.";
+        return;
+      }
+      if (avatarInput.style.display === "none") {
+        avatarInput.style.display = "block";
+        avatarInput.focus();
+        uploadAvatarBtn.textContent = "Upload";
+      } else {
+        const file = avatarInput.files[0];
+        if (!file) {
+          statusDiv.textContent = "Please select an image.";
+          return;
+        }
+        const formData = new FormData();
+        formData.append("avatar", file);
+        formData.append("wallet", user);
+        fetch(`${BACKEND_URL}/upload-avatar`, {
+          method: "POST",
+          body: formData,
+        })
+          .then(response => response.json())
+          .then(data => {
+            if (data.error) {
+              statusDiv.textContent = `Error: ${data.error}`;
+            } else {
+              statusDiv.textContent = "Avatar uploaded successfully!";
+              avatarInput.style.display = "none";
+              avatarInput.value = "";
+              uploadAvatarBtn.textContent = isAdmin ? "Change Avatar" : "Avatar Set";
+              if (!isAdmin) uploadAvatarBtn.disabled = true;
+              loadUsername(window.solana.publicKey); // Reload to display avatar
+            }
+          })
+          .catch(err => {
+            statusDiv.textContent = `Error uploading avatar: ${err.message}`;
+          });
+      }
+    });
+
     // WebSocket connection
     async function connectWebSocket(rank, userAddress) {
       if (retryCount >= MAX_RETRIES) {
@@ -393,6 +549,19 @@
           input.value = "";
           statusDiv.textContent = "Message sent!";
         });
+        const pinBtn = document.getElementById("pin-message-btn");
+        if (window.solana?.publicKey?.toBase58() === ADMIN_WALLET) {
+          pinBtn.style.display = "block";
+          pinBtn.replaceWith(pinBtn.cloneNode(true));
+          document.getElementById("poll-question").style.display = "block";
+          document.getElementById("poll-option").style.display = "block";
+          document.getElementById("create-poll-btn").style.display = "block";
+        } else {
+          pinBtn.style.display = "none";
+          document.getElementById("poll-question").style.display = "none";
+          document.getElementById("poll-option").style.display = "none";
+          document.getElementById("create-poll-btn").style.display = "none";
+        }
       };
       ws.onmessage = (event) => {
         try {
@@ -405,7 +574,9 @@
             const date = new Date(msg.timestamp);
             const timeString = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
             const p = document.createElement("p");
-            p.innerHTML = `<span class="rank-${msg.rank.toLowerCase()}">${msg.rank}: ${msg.user}</span> (${timeString}): ${msg.text}`;
+            if (msg.pinned) p.classList.add("pinned");
+            const avatarImg = msg.avatar ? `<img src="${msg.avatar}" class="avatar" alt="Avatar">` : "";
+            p.innerHTML = `${avatarImg}<span class="rank-${msg.rank.toLowerCase()}">${msg.rank}: ${msg.user} (${timeString})</span>: ${msg.text}`;
             const currentUser = window.solana?.publicKey?.toBase58();
             if (currentUser === ADMIN_WALLET || currentUser === msg.originalWallet) {
               const deleteBtn = document.createElement("span");
@@ -419,13 +590,34 @@
               };
               p.appendChild(deleteBtn);
             }
-            chatMessages.appendChild(p);
+            if (currentUser === ADMIN_WALLET && !msg.pinned) {
+              const pinBtn = document.createElement("span");
+              pinBtn.className = "pin-btn";
+              pinBtn.textContent = "📌";
+              pinBtn.onclick = () => {
+                if (confirm("Pin this message?")) {
+                  ws.send(JSON.stringify({ type: "pin_message", index }));
+                }
+              };
+              p.appendChild(pinBtn);
+            }
+            if (msg.pinned) {
+              chatMessages.insertBefore(p, chatMessages.firstChild);
+            } else {
+              chatMessages.appendChild(p);
+            }
             chatMessages.scrollTop = chatMessages.scrollHeight;
           } else if (msg.type === "delete_message" && msg.index !== undefined) {
             const messages = chatMessages.children;
             if (messages[msg.index]) messages[msg.index].remove();
             if (chatMessages.children.length === 0) {
               chatMessages.innerHTML = "<p>No messages available.</p>";
+            }
+          } else if (msg.type === "pin_message" && msg.index !== undefined) {
+            const messages = chatMessages.children;
+            if (messages[msg.index]) {
+              messages[msg.index].classList.add("pinned");
+              chatMessages.insertBefore(messages[msg.index], chatMessages.firstChild);
             }
           }
         } catch (err) {
@@ -489,7 +681,8 @@
           const timeString = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
           const p = document.createElement("p");
           const displayName = sug.username || (sug.wallet ? sug.wallet.slice(0, 8) + '...' : "Anonymous");
-          p.innerHTML = `${displayName} (${timeString}): ${sug.suggestion}`;
+          const avatarImg = sug.avatar ? `<img src="${sug.avatar}" class="avatar" alt="Avatar">` : "";
+          p.innerHTML = `${avatarImg}${displayName} (${timeString}): ${sug.suggestion}`;
           if (isAdmin || sug.wallet === user) {
             const deleteBtn = document.createElement("span");
             deleteBtn.className = "delete-btn";
@@ -519,6 +712,85 @@
         suggestionsList.innerHTML = "<p>Failed to load suggestions.</p>";
       }
     }
+
+    // Load polls
+    async function loadPolls() {
+      try {
+        const user = window.solana?.publicKey?.toBase58();
+        const response = await fetch(`${BACKEND_URL}/polls`);
+        if (!response.ok) {
+          throw new Error(`HTTP error: ${await response.text()}`);
+        }
+        const polls = await response.json();
+        pollList.innerHTML = "";
+        if (!Array.isArray(polls) || polls.length === 0) {
+          pollList.innerHTML = "<p>No polls available.</p>";
+          return;
+        }
+        polls.forEach((poll, index) => {
+          const p = document.createElement("p");
+          p.innerHTML = `<strong>${poll.question}</strong><br>Options: ${poll.options.map((opt, i) => `${opt.option} (${opt.votes} votes)`).join(", ")}`;
+          if (poll.voters.includes(user)) {
+            p.innerHTML += "<br><em>You voted.</em>";
+          } else {
+            const voteBtn = document.createElement("button");
+            voteBtn.className = "retry-button";
+            voteBtn.textContent = "Vote";
+            voteBtn.onclick = async () => {
+              const option = prompt(`Enter option number (0-${poll.options.length - 1}):`);
+              if (option !== null && !isNaN(option) && option >= 0 && option < poll.options.length) {
+                const voteResponse = await fetch(`${BACKEND_URL}/vote`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ pollIndex: index, optionIndex: parseInt(option), wallet: user }),
+                });
+                if (voteResponse.ok) {
+                  statusDiv.textContent = "Vote recorded!";
+                  loadPolls();
+                } else {
+                  statusDiv.textContent = `Error voting: ${await voteResponse.text()}`;
+                }
+              } else {
+                statusDiv.textContent = "Invalid option.";
+              }
+            };
+            p.appendChild(voteBtn);
+          }
+          pollList.appendChild(p);
+        });
+      } catch (err) {
+        statusDiv.textContent = `Error loading polls: ${err.message}`;
+        pollList.innerHTML = "<p>Failed to load polls.</p>";
+      }
+    }
+
+    // Create poll
+    createPollBtn.addEventListener("click", async () => {
+      const user = window.solana?.publicKey?.toBase58();
+      if (user !== ADMIN_WALLET) {
+        statusDiv.textContent = "Only admin can create polls.";
+        return;
+      }
+      const question = pollQuestion.value.trim();
+      const options = pollOption.value.trim().split(",").map(opt => opt.trim()).filter(opt => opt);
+      if (!question || options.length < 2) {
+        statusDiv.textContent = "Enter a question and at least two options (comma-separated).";
+        return;
+      }
+      const response = await fetch(`${BACKEND_URL}/create-poll`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, options, wallet: user }),
+      });
+      if (response.ok) {
+        statusDiv.textContent = "Poll created successfully!";
+        pollQuestion.value = "";
+        pollOption.value = "";
+        loadPolls();
+      } else {
+        statusDiv.textContent = `Error creating poll: ${await response.text()}`;
+      }
+    });
 
     // Get Solana connection
     async function getConnection(attempt = 0) {
@@ -571,20 +843,25 @@
           throw new Error(`HTTP error: ${await response.text()}`);
         }
         const users = await response.json();
-        const username = users[publicKey.toBase58()] || "Not set";
-        document.getElementById("username-display").textContent = username;
-        if (username !== "Not set" && publicKey.toBase58() !== ADMIN_WALLET) {
+        const userData = users[publicKey.toBase58()] || { username: "Not set", avatar: null };
+        document.getElementById("username-display").textContent = userData.username;
+        if (userData.username !== "Not set" && publicKey.toBase58() !== ADMIN_WALLET) {
           setUsernameBtn.textContent = "Username Set";
           setUsernameBtn.disabled = true;
+          uploadAvatarBtn.textContent = "Avatar Set";
+          uploadAvatarBtn.disabled = true;
           usernameInput.style.display = "none";
+          avatarInput.style.display = "none";
         } else if (publicKey.toBase58() === ADMIN_WALLET) {
           setUsernameBtn.textContent = "Change Username";
+          uploadAvatarBtn.textContent = userData.avatar ? "Change Avatar" : "Upload Avatar";
           setUsernameBtn.disabled = false;
+          uploadAvatarBtn.disabled = false;
         }
-        return username;
+        return userData;
       } catch (err) {
         statusDiv.textContent = `Error loading username: ${err.message}`;
-        return "Not set";
+        return { username: "Not set", avatar: null };
       }
     }
 
@@ -648,6 +925,7 @@
         const { rank } = await updateVipInfo(publicKey, connection);
         await loadUsername(publicKey);
         await loadSuggestions();
+        await loadPolls();
         connectWebSocket(rank, publicKey.toBase58().slice(0, 6));
 
         document.getElementById("submit-suggestion").replaceWith(document.getElementById("submit-suggestion").cloneNode(true));
