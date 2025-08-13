@@ -576,553 +576,554 @@
           setBioBtn.textContent = isAdmin ? "Change Bio" : "Bio Set";
           if (!isAdmin) setBioBtn.disabled = true;
         } catch (err) {
-          statusDiv.textContent = Error: ${err.message};
+          statusDiv.textContent = `Error: ${err.message}`;
           console.error("Error setting bio:", err); // Debug
         }
       }
-    });bioInput.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") setBioBtn.click();
-});
-
-// Avatar upload
-uploadAvatarBtn.addEventListener("click", () => {
-  console.log("Upload Avatar button clicked"); // Debug
-  const user = window.solana?.publicKey?.toBase58();
-  if (!user) {
-    statusDiv.textContent = "Please connect your wallet.";
-    console.log("No wallet connected"); // Debug
-    return;
-  }
-  avatarInput.click();
-});
-
-avatarInput.addEventListener("change", async () => {
-  console.log("Avatar file selected"); // Debug
-  const user = window.solana?.publicKey?.toBase58();
-  const isAdmin = user === ADMIN_WALLET;
-  const file = avatarInput.files[0];
-  if (!file) {
-    statusDiv.textContent = "Please select an image.";
-    return;
-  }
-  const formData = new FormData();
-  formData.append("avatar", file);
-  formData.append("wallet", user);
-  try {
-    const response = await fetch(`${BACKEND_URL}/upload-avatar`, {
-      method: "POST",
-      body: formData,
     });
-    const data = await response.json();
-    console.log("Avatar upload response:", data); // Debug
-    if (!response.ok) {
-      throw new Error(data.error || "Failed to upload avatar");
-    }
-    statusDiv.textContent = "Avatar uploaded successfully!";
-    avatarInput.value = "";
-    uploadAvatarBtn.textContent = isAdmin ? "Change Avatar" : "Avatar Set";
-    if (!isAdmin) uploadAvatarBtn.disabled = true;
-    await loadUsername(window.solana.publicKey);
-  } catch (err) {
-    statusDiv.textContent = `Error uploading avatar: ${err.message}`;
-    console.error("Avatar upload error:", err); // Debug
-  }
-});
 
-// WebSocket connection
-async function connectWebSocket(rank, userAddress) {
-  if (retryCount >= MAX_RETRIES) {
-    statusDiv.textContent = "Max retry attempts reached. Please click Retry or refresh.";
-    retryBtn.style.display = "block";
-    return;
-  }
-  ws = new WebSocket(WEBSOCKET_URL);
-  ws.onopen = () => {
-    console.log("WebSocket connected"); // Debug
-    statusDiv.textContent = "Connected to chat!";
-    ws.isAuthenticated = true;
-    retryCount = 0;
-    chatMessages.innerHTML = "<p>Chat connected. Waiting for messages...</p>";
-    document.getElementById("send-chat").addEventListener("click", () => {
-      console.log("Send Chat button clicked"); // Debug
-      const input = document.getElementById("chat-input");
-      let text = input.value.trim();
-      if (!text || !ws || ws.readyState !== WebSocket.OPEN || !ws.isAuthenticated) {
-        statusDiv.textContent = !ws ? "No WebSocket connection." :
-                              ws.readyState !== WebSocket.OPEN ? "WebSocket not connected." :
-                              !ws.isAuthenticated ? "Not connected to chat." : "Enter a valid message.";
-        return;
-      }
-      if (text.length > MAX_MESSAGE_LENGTH) {
-        text = text.slice(0, MAX_MESSAGE_LENGTH);
-      }
-      const user = window.solana?.publicKey?.toBase58() || "Anon";
-      const rank = document.getElementById("vip-rank").textContent;
-      const message = { type: "chat", user, rank, text, timestamp: new Date().toISOString() };
-      ws.send(JSON.stringify(message));
-      input.value = "";
-      statusDiv.textContent = "Message sent!";
+    bioInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") setBioBtn.click();
     });
-    const pinBtn = document.getElementById("pin-message-btn");
-    if (window.solana?.publicKey?.toBase58() === ADMIN_WALLET) {
-      pinBtn.style.display = "block";
-      pollQuestion.style.display = "block";
-      pollOption.style.display = "block";
-      createPollBtn.style.display = "block";
-    } else {
-      pinBtn.style.display = "none";
-      pollQuestion.style.display = "none";
-      pollOption.style.display = "none";
-      createPollBtn.style.display = "none";
-    }
-  };
-  ws.onmessage = async (event) => {
-    try {
-      const msg = JSON.parse(event.data);
-      if (msg.type === "chat" && msg.user && msg.rank && msg.text && msg.timestamp) {
-        if (chatMessages.children.length === 1 && chatMessages.children[0].textContent === "Chat connected. Waiting for messages...") {
-          chatMessages.innerHTML = "";
-        }
-        const index = chatMessages.children.length;
-        const date = new Date(msg.timestamp);
-        const timeString = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        const p = document.createElement("p");
-        if (msg.pinned) p.classList.add("pinned");
-        const avatarImg = msg.avatar ? `<img src="${msg.avatar}" class="avatar" alt="Avatar" onerror="this.onerror=null; this.src='/images/default-avatar.png'; console.log('Avatar load failed, switched to default. Original URL:', '${msg.avatar}');">` : '';
-        const tooltipAvatar = msg.avatar ? `<img src="${msg.avatar}" alt="Avatar" onerror="this.onerror=null; this.src='/images/default-avatar.png'; console.log('Tooltip avatar load failed, switched to default. Original URL:', '${msg.avatar}');">` : '';
-        const tooltip = msg.avatar || msg.bio ? `<div class="tooltip">${tooltipAvatar}<p>${msg.bio || "No bio set"}</p></div>` : "";
-        p.innerHTML = `${avatarImg}<span class="username rank-${msg.rank.toLowerCase()}">${msg.rank}: ${msg.user} (${timeString})${tooltip}</span>: ${msg.text}`;
-        const currentUser = window.solana?.publicKey?.toBase58();
-        if (currentUser === ADMIN_WALLET || currentUser === msg.originalWallet) {
-          const deleteBtn = document.createElement("span");
-          deleteBtn.className = "delete-btn";
-          deleteBtn.textContent = "";
-          deleteBtn.onclick = () => {
-            if (confirm("Delete this message?")) {
-              ws.send(JSON.stringify({ type: "delete_message", index }));
-              p.remove();
-            }
-          };
-          p.appendChild(deleteBtn);
-        }
-        if (currentUser === ADMIN_WALLET && !msg.pinned) {
-          const pinBtn = document.createElement("span");
-          pinBtn.className = "pin-btn";
-          pinBtn.textContent = "";
-          pinBtn.onclick = () => {
-            if (confirm("Pin this message?")) {
-              ws.send(JSON.stringify({ type: "pin_message", index }));
-            }
-          };
-          p.appendChild(pinBtn);
-        }
-        if (msg.pinned) {
-          chatMessages.insertBefore(p, chatMessages.firstChild);
-        } else {
-          chatMessages.appendChild(p);
-        }
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-      } else if (msg.type === "delete_message" && msg.index !== undefined) {
-        const messages = chatMessages.children;
-        if (messages[msg.index]) messages[msg.index].remove();
-        if (chatMessages.children.length === 0) {
-          chatMessages.innerHTML = "<p>No messages available.</p>";
-        }
-      } else if (msg.type === "pin_message" && msg.index !== undefined) {
-        const messages = chatMessages.children;
-        if (messages[msg.index]) {
-          messages[msg.index].classList.add("pinned");
-          chatMessages.insertBefore(messages[msg.index], chatMessages.firstChild);
-        }
-      }
-    } catch (err) {
-      statusDiv.textContent = `Error parsing message: ${err.message}`;
-      console.error("WebSocket message error:", err);
-    }
-  };
-  ws.onclose = () => {
-    statusDiv.textContent = `Chat disconnected. Retrying (${retryCount + 1}/${MAX_RETRIES})...`;
-    console.log("WebSocket closed, retrying..."); // Debug
-    if (retryCount < MAX_RETRIES) {
-      retryCount++;
-      setTimeout(() => connectWebSocket(rank, userAddress), RETRY_INTERVAL);
-    } else {
-      statusDiv.textContent = "Max retry attempts reached. Please click Retry or refresh.";
-      retryBtn.style.display = "block";
-    }
-  };
-  ws.onerror = () => {
-    statusDiv.textContent = "Chat server error. Retrying in 10 seconds...";
-    console.error("WebSocket error occurred"); // Debug
-  };
-}
 
-// Submit suggestion
-async function submitSuggestion(publicKey, suggestion) {
-  try {
-    if (!suggestion) {
-      throw new Error("Please enter a suggestion.");
-    }
-    const response = await fetch(`${BACKEND_URL}/submit-free-suggestion`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ wallet: publicKey, suggestion }),
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.error || "Failed to submit suggestion");
-    }
-    statusDiv.textContent = "Suggestion submitted successfully!";
-    return true;
-  } catch (err) {
-    statusDiv.textContent = `Error submitting suggestion: ${err.message}`;
-    console.error("Suggestion error:", err); // Debug
-    return false;
-  }
-}
-
-// Load suggestions
-async function loadSuggestions() {
-  try {
-    const user = window.solana?.publicKey?.toBase58();
-    const isAdmin = user === ADMIN_WALLET;
-    const response = await fetch(`${BACKEND_URL}/suggestions?wallet=${user}`);
-    const suggestions = await response.json();
-    if (!response.ok) {
-      throw new Error(suggestions.error || "Failed to load suggestions");
-    }
-    suggestionsList.innerHTML = "";
-    if (!Array.isArray(suggestions) || suggestions.length === 0) {
-      suggestionsList.innerHTML = "<p>No suggestions available.</p>";
-      return;
-    }
-    suggestions.forEach((sug, index) => {
-      const date = new Date(sug.timestamp);
-      const timeString = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      const p = document.createElement("p");
-      const displayName = sug.username || (sug.wallet ? sug.wallet.slice(0, 8) + '...' : "Anonymous");
-      const avatarImg = sug.avatar ? `<img src="${sug.avatar}" class="avatar" alt="Avatar" onerror="this.onerror=null; this.src='/images/default-avatar.png'; console.log('Suggestion avatar load failed, switched to default. Original URL:', '${sug.avatar}');">` : '';
-      p.innerHTML = `${avatarImg}${displayName} (${timeString}): ${sug.suggestion}`;
-      if (isAdmin || sug.wallet === user) {
-        const deleteBtn = document.createElement("span");
-        deleteBtn.className = "delete-btn";
-        deleteBtn.textContent = "";
-        deleteBtn.onclick = async () => {
-          if (confirm("Delete this suggestion?")) {
-            const deleteResponse = await fetch(`${BACKEND_URL}/delete-suggestion`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ index, wallet: user }),
-            });
-            const data = await deleteResponse.json();
-            if (deleteResponse.ok) {
-              p.remove();
-              statusDiv.textContent = "Suggestion deleted.";
-            } else {
-              statusDiv.textContent = `Error deleting suggestion: ${data.error || "Unknown error"}`;
-            }
-          }
-        };
-        p.appendChild(deleteBtn);
-      }
-      suggestionsList.appendChild(p);
-    });
-    suggestionsList.scrollTop = suggestionsList.scrollHeight;
-  } catch (err) {
-    statusDiv.textContent = `Error loading suggestions: ${err.message}`;
-    console.error("Suggestions load error:", err); // Debug
-    suggestionsList.innerHTML = "<p>Failed to load suggestions.</p>";
-  }
-}
-
-// Load polls
-async function loadPolls() {
-  try {
-    const user = window.solana?.publicKey?.toBase58();
-    const response = await fetch(`${BACKEND_URL}/polls`);
-    const polls = await response.json();
-    if (!response.ok) {
-      throw new Error(polls.error || "Failed to load polls");
-    }
-    pollList.innerHTML = "";
-    if (!Array.isArray(polls) || polls.length === 0) {
-      pollList.innerHTML = "<p>No polls available.</p>";
-      return;
-    }
-    polls.forEach((poll, index) => {
-      const p = document.createElement("p");
-      p.innerHTML = `<strong>${poll.question}</strong>
-Options: ${poll.options.map((opt, i) => `${opt.option} (${opt.votes} votes)`).join(", ")}`;
-      if (poll.voters.includes(user)) {
-        p.innerHTML += "
-<em>You voted.</em>";
-      } else {
-        const voteBtn = document.createElement("button");
-        voteBtn.className = "retry-button";
-        voteBtn.textContent = "Vote";
-        voteBtn.onclick = async () => {
-          const option = prompt(`Enter option number (0-${poll.options.length - 1}):`);
-          if (option !== null && !isNaN(option) && option >= 0 && option < poll.options.length) {
-            const voteResponse = await fetch(`${BACKEND_URL}/vote`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ pollIndex: index, optionIndex: parseInt(option), wallet: user }),
-            });
-            const data = await voteResponse.json();
-            if (voteResponse.ok) {
-              statusDiv.textContent = "Vote recorded!";
-              loadPolls();
-            } else {
-              statusDiv.textContent = `Error voting: ${data.error || "Unknown error"}`;
-            }
-          } else {
-            statusDiv.textContent = "Invalid option.";
-          }
-        };
-        p.appendChild(voteBtn);
-      }
-      pollList.appendChild(p);
-    });
-  } catch (err) {
-    statusDiv.textContent = `Error loading polls: ${err.message}`;
-    console.error("Polls load error:", err); // Debug
-    pollList.innerHTML = "<p>Failed to load polls.</p>";
-  }
-}
-
-// Create poll
-createPollBtn.addEventListener("click", async () => {
-  console.log("Create Poll button clicked"); // Debug
-  const user = window.solana?.publicKey?.toBase58();
-  if (user !== ADMIN_WALLET) {
-    statusDiv.textContent = "Only admin can create polls.";
-    return;
-  }
-  const question = pollQuestion.value.trim();
-  const options = pollOption.value.trim().split(",").map(opt => opt.trim()).filter(opt => opt);
-  if (!question || options.length < 2) {
-    statusDiv.textContent = "Enter a question and at least two options (comma-separated).";
-    return;
-  }
-  try {
-    const response = await fetch(`${BACKEND_URL}/create-poll`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question, options, wallet: user }),
-    });
-    const data = await response.json();
-    if (response.ok) {
-      statusDiv.textContent = "Poll created successfully!";
-      pollQuestion.value = "";
-      pollOption.value = "";
-      await loadPolls();
-    } else {
-      statusDiv.textContent = `Error creating poll: ${data.error || "Unknown error"}`;
-    }
-  } catch (err) {
-    statusDiv.textContent = `Error creating poll: ${err.message}`;
-    console.error("Poll creation error:", err); // Debug
-  }
-});
-
-// Get Solana connection
-async function getConnection(attempt = 0) {
-  const rpc = RPC_ENDPOINTS[attempt];
-  try {
-    const connection = new solanaWeb3.Connection(rpc, { commitment: "confirmed" });
-    await connection.getSlot();
-    return connection;
-  } catch (err) {
-    if (attempt < RPC_ENDPOINTS.length - 1) {
-      return getConnection(attempt + 1);
-    }
-    throw new Error("All RPC endpoints failed.");
-  }
-}
-
-// Update VIP info
-async function updateVipInfo(publicKey, connection) {
-  try {
-    const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-      publicKey,
-      { mint: TOKEN_MINT, programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") }
-    );
-    let tokenBalance = 0;
-    for (const { account } of tokenAccounts.value) {
-      if (account.data.parsed.info.mint === TOKEN_MINT.toBase58()) {
-        tokenBalance = parseFloat(account.data.parsed.info.tokenAmount.uiAmount);
-        break;
-      }
-    }
-    document.getElementById("vip-balance").textContent = tokenBalance.toLocaleString();
-    const rank = tokenBalance >= 1000000 ? "Rhodium" :
-                 tokenBalance >= 750000 ? "Platinum" :
-                 tokenBalance >= 500000 ? "Gold" :
-                 tokenBalance >= 250000 ? "Silver" :
-                 tokenBalance >= 100000 ? "Bronze" : "No Rank";
-    document.getElementById("vip-rank").textContent = rank;
-    return { balance: tokenBalance, rank };
-  } catch (err) {
-    statusDiv.textContent = `Error fetching balance: ${err.message}`;
-    console.error("Balance fetch error:", err); // Debug
-    return { balance: 0, rank: "No Rank" };
-  }
-}
-
-// Load username and bio
-async function loadUsername(publicKey) {
-  try {
-    const response = await fetch(`${BACKEND_URL}/users`);
-    const users = await response.json();
-    if (!response.ok) {
-      throw new Error(users.error || "Failed to load user data");
-    }
-    const userData = users[publicKey.toBase58()] || { username: "Not set", avatar: null, bio: "Not set" };
-    document.getElementById("username-display").textContent = userData.username;
-    document.getElementById("bio-display").textContent = userData.bio;
-    const isAdmin = publicKey.toBase58() === ADMIN_WALLET;
-    if (userData.username !== "Not set" && !isAdmin) {
-      setUsernameBtn.textContent = "Username Set";
-      setUsernameBtn.disabled = true;
-    } else {
-      setUsernameBtn.textContent = "Change Username";
-      setUsernameBtn.disabled = false;
-    }
-    if (userData.bio !== "Not set" && !isAdmin) {
-      setBioBtn.textContent = "Bio Set";
-      setBioBtn.disabled = true;
-    } else {
-      setBioBtn.textContent = "Change Bio";
-      setBioBtn.disabled = false;
-    }
-    if (userData.avatar && !isAdmin) {
-      uploadAvatarBtn.textContent = "Avatar Set";
-      uploadAvatarBtn.disabled = true;
-    } else {
-      uploadAvatarBtn.textContent = userData.avatar ? "Change Avatar" : "Upload Avatar";
-      uploadAvatarBtn.disabled = false;
-    }
-    return userData;
-  } catch (err) {
-    statusDiv.textContent = `Error loading user data: ${err.message}`;
-    console.error("User data load error:", err); // Debug
-    return { username: "Not set", avatar: null, bio: "Not set" };
-  }
-}
-
-// Check VIP access
-async function checkVipAccess() {
-  try {
-    if (!window.solana || !window.solana.isPhantom) {
-      statusDiv.textContent = "Phantom Wallet required. Please install Phantom.";
-      retryBtn.style.display = "none";
-      alert("Phantom Wallet is required. Install it from https://phantom.app.");
-      window.open("https://phantom.app/", "_blank");
-      return false;
-    }
-
-    const provider = window.solana;
-    let publicKey;
-    try {
-      const resp = await provider.connect();
-      publicKey = resp.publicKey;
-    } catch (err) {
-      statusDiv.textContent = "Please connect your Phantom wallet.";
-      retryBtn.style.display = "block";
-      return false;
-    }
-
-    const storedPublicKey = sessionStorage.getItem("smmPublicKey");
-    const isVerified = sessionStorage.getItem("smmVipVerified") === "true";
-
-    if (isVerified && storedPublicKey === publicKey.toBase58()) {
-      statusDiv.textContent = "VIP access granted!";
-    } else {
-      statusDiv.textContent = `Connected: ${publicKey.toBase58().slice(0, 6)}... Checking SMM balance...`;
-      const connection = await getConnection();
-      const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-        publicKey,
-        { mint: TOKEN_MINT, programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") }
-      );
-
-      let tokenBalance = 0;
-      for (const { account } of tokenAccounts.value) {
-        if (account.data.parsed.info.mint === TOKEN_MINT.toBase58()) {
-          tokenBalance = parseFloat(account.data.parsed.info.tokenAmount.uiAmount);
-          break;
-        }
-      }
-
-      if (tokenBalance < VIP_MINIMUM) {
-        statusDiv.textContent = `Access denied: Need at least ${VIP_MINIMUM.toLocaleString()} SMM. Current: ${tokenBalance.toLocaleString()} SMM.`;
-        retryBtn.style.display = "block";
-        sessionStorage.removeItem("smmVipVerified");
-        sessionStorage.removeItem("smmPublicKey");
-        return false;
-      }
-
-      sessionStorage.setItem("smmVipVerified", "true");
-      sessionStorage.setItem("smmPublicKey", publicKey.toBase58());
-      statusDiv.textContent = "VIP access granted!";
-    }
-
-    const connection = await getConnection();
-    const { rank } = await updateVipInfo(publicKey, connection);
-    await loadUsername(publicKey);
-    await loadSuggestions();
-    await loadPolls();
-    connectWebSocket(rank, publicKey.toBase58().slice(0, 6));
-
-    document.getElementById("submit-suggestion").addEventListener("click", async () => {
-      console.log("Submit Suggestion button clicked"); // Debug
-      const suggestion = suggestionInput.value.trim();
-      if (!suggestion) {
-        statusDiv.textContent = "Please enter a suggestion.";
-        return;
-      }
-      const user = window.solana?.publicKey;
+    // Avatar upload
+    uploadAvatarBtn.addEventListener("click", () => {
+      console.log("Upload Avatar button clicked"); // Debug
+      const user = window.solana?.publicKey?.toBase58();
       if (!user) {
         statusDiv.textContent = "Please connect your wallet.";
+        console.log("No wallet connected"); // Debug
         return;
       }
-      const success = await submitSuggestion(user.toBase58(), suggestion);
-      if (success) {
-        suggestionInput.value = "";
-        await loadSuggestions();
+      avatarInput.click();
+    });
+
+    avatarInput.addEventListener("change", async () => {
+      console.log("Avatar file selected"); // Debug
+      const user = window.solana?.publicKey?.toBase58();
+      const isAdmin = user === ADMIN_WALLET;
+      const file = avatarInput.files[0];
+      if (!file) {
+        statusDiv.textContent = "Please select an image.";
+        return;
+      }
+      const formData = new FormData();
+      formData.append("avatar", file);
+      formData.append("wallet", user);
+      try {
+        const response = await fetch(`${BACKEND_URL}/upload-avatar`, {
+          method: "POST",
+          body: formData,
+        });
+        const data = await response.json();
+        console.log("Avatar upload response:", data); // Debug
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to upload avatar");
+        }
+        statusDiv.textContent = "Avatar uploaded successfully!";
+        avatarInput.value = "";
+        uploadAvatarBtn.textContent = isAdmin ? "Change Avatar" : "Avatar Set";
+        if (!isAdmin) uploadAvatarBtn.disabled = true;
+        await loadUsername(window.solana.publicKey);
+      } catch (err) {
+        statusDiv.textContent = `Error uploading avatar: ${err.message}`;
+        console.error("Avatar upload error:", err); // Debug
       }
     });
 
-    document.getElementById("chat-input").addEventListener("keypress", (e) => {
-      if (e.key === "Enter") document.getElementById("send-chat").click();
+    // WebSocket connection
+    async function connectWebSocket(rank, userAddress) {
+      if (retryCount >= MAX_RETRIES) {
+        statusDiv.textContent = "Max retry attempts reached. Please click Retry or refresh.";
+        retryBtn.style.display = "block";
+        return;
+      }
+      ws = new WebSocket(WEBSOCKET_URL);
+      ws.onopen = () => {
+        console.log("WebSocket connected"); // Debug
+        statusDiv.textContent = "Connected to chat!";
+        ws.isAuthenticated = true;
+        retryCount = 0;
+        chatMessages.innerHTML = "<p>Chat connected. Waiting for messages...</p>";
+        document.getElementById("send-chat").addEventListener("click", () => {
+          console.log("Send Chat button clicked"); // Debug
+          const input = document.getElementById("chat-input");
+          let text = input.value.trim();
+          if (!text || !ws || ws.readyState !== WebSocket.OPEN || !ws.isAuthenticated) {
+            statusDiv.textContent = !ws ? "No WebSocket connection." :
+                                  ws.readyState !== WebSocket.OPEN ? "WebSocket not connected." :
+                                  !ws.isAuthenticated ? "Not connected to chat." : "Enter a valid message.";
+            return;
+          }
+          if (text.length > MAX_MESSAGE_LENGTH) {
+            text = text.slice(0, MAX_MESSAGE_LENGTH);
+          }
+          const user = window.solana?.publicKey?.toBase58() || "Anon";
+          const rank = document.getElementById("vip-rank").textContent;
+          const message = { type: "chat", user, rank, text, timestamp: new Date().toISOString() };
+          ws.send(JSON.stringify(message));
+          input.value = "";
+          statusDiv.textContent = "Message sent!";
+        });
+        const pinBtn = document.getElementById("pin-message-btn");
+        if (window.solana?.publicKey?.toBase58() === ADMIN_WALLET) {
+          pinBtn.style.display = "block";
+          pollQuestion.style.display = "block";
+          pollOption.style.display = "block";
+          createPollBtn.style.display = "block";
+        } else {
+          pinBtn.style.display = "none";
+          pollQuestion.style.display = "none";
+          pollOption.style.display = "none";
+          createPollBtn.style.display = "none";
+        }
+      };
+      ws.onmessage = async (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === "chat" && msg.user && msg.rank && msg.text && msg.timestamp) {
+            if (chatMessages.children.length === 1 && chatMessages.children[0].textContent === "Chat connected. Waiting for messages...") {
+              chatMessages.innerHTML = "";
+            }
+            const index = chatMessages.children.length;
+            const date = new Date(msg.timestamp);
+            const timeString = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            const p = document.createElement("p");
+            if (msg.pinned) p.classList.add("pinned");
+            const avatarImg = msg.avatar ? `<img src="${msg.avatar}" class="avatar" alt="Avatar" onerror="this.onerror=null; this.src='/images/default-avatar.png'; console.log('Avatar failed to load, using default:', '${msg.avatar}');">` : "";
+            const tooltipAvatar = msg.avatar ? `<img src="${msg.avatar}" alt="Avatar" onerror="this.onerror=null; this.src='/images/default-avatar.png'; console.log('Tooltip avatar failed:', '${msg.avatar}');">` : '';
+            const tooltip = msg.avatar || msg.bio ? `<div class="tooltip">${tooltipAvatar}<p>${msg.bio || "No bio set"}</p></div>` : "";
+            p.innerHTML = `${avatarImg}<span class="username rank-${msg.rank.toLowerCase()}">${msg.rank}: ${msg.user} (${timeString})${tooltip}</span>: ${msg.text}`;
+            const currentUser = window.solana?.publicKey?.toBase58();
+            if (currentUser === ADMIN_WALLET || currentUser === msg.originalWallet) {
+              const deleteBtn = document.createElement("span");
+              deleteBtn.className = "delete-btn";
+              deleteBtn.textContent = "❌";
+              deleteBtn.onclick = () => {
+                if (confirm("Delete this message?")) {
+                  ws.send(JSON.stringify({ type: "delete_message", index }));
+                  p.remove();
+                }
+              };
+              p.appendChild(deleteBtn);
+            }
+            if (currentUser === ADMIN_WALLET && !msg.pinned) {
+              const pinBtn = document.createElement("span");
+              pinBtn.className = "pin-btn";
+              pinBtn.textContent = "📌";
+              pinBtn.onclick = () => {
+                if (confirm("Pin this message?")) {
+                  ws.send(JSON.stringify({ type: "pin_message", index }));
+                }
+              };
+              p.appendChild(pinBtn);
+            }
+            if (msg.pinned) {
+              chatMessages.insertBefore(p, chatMessages.firstChild);
+            } else {
+              chatMessages.appendChild(p);
+            }
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+          } else if (msg.type === "delete_message" && msg.index !== undefined) {
+            const messages = chatMessages.children;
+            if (messages[msg.index]) messages[msg.index].remove();
+            if (chatMessages.children.length === 0) {
+              chatMessages.innerHTML = "<p>No messages available.</p>";
+            }
+          } else if (msg.type === "pin_message" && msg.index !== undefined) {
+            const messages = chatMessages.children;
+            if (messages[msg.index]) {
+              messages[msg.index].classList.add("pinned");
+              chatMessages.insertBefore(messages[msg.index], chatMessages.firstChild);
+            }
+          }
+        } catch (err) {
+          statusDiv.textContent = `Error parsing message: ${err.message}`;
+          console.error("WebSocket message error:", err);
+        }
+      };
+      ws.onclose = () => {
+        statusDiv.textContent = `Chat disconnected. Retrying (${retryCount + 1}/${MAX_RETRIES})...`;
+        console.log("WebSocket closed, retrying..."); // Debug
+        if (retryCount < MAX_RETRIES) {
+          retryCount++;
+          setTimeout(() => connectWebSocket(rank, userAddress), RETRY_INTERVAL);
+        } else {
+          statusDiv.textContent = "Max retry attempts reached. Please click Retry or refresh.";
+          retryBtn.style.display = "block";
+        }
+      };
+      ws.onerror = () => {
+        statusDiv.textContent = "Chat server error. Retrying in 10 seconds...";
+        console.error("WebSocket error occurred"); // Debug
+      };
+    }
+
+    // Submit suggestion
+    async function submitSuggestion(publicKey, suggestion) {
+      try {
+        if (!suggestion) {
+          throw new Error("Please enter a suggestion.");
+        }
+        const response = await fetch(`${BACKEND_URL}/submit-free-suggestion`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ wallet: publicKey, suggestion }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to submit suggestion");
+        }
+        statusDiv.textContent = "Suggestion submitted successfully!";
+        return true;
+      } catch (err) {
+        statusDiv.textContent = `Error submitting suggestion: ${err.message}`;
+        console.error("Suggestion error:", err); // Debug
+        return false;
+      }
+    }
+
+    // Load suggestions
+    async function loadSuggestions() {
+      try {
+        const user = window.solana?.publicKey?.toBase58();
+        const isAdmin = user === ADMIN_WALLET;
+        const response = await fetch(`${BACKEND_URL}/suggestions?wallet=${user}`);
+        const suggestions = await response.json();
+        if (!response.ok) {
+          throw new Error(suggestions.error || "Failed to load suggestions");
+        }
+        suggestionsList.innerHTML = "";
+        if (!Array.isArray(suggestions) || suggestions.length === 0) {
+          suggestionsList.innerHTML = "<p>No suggestions available.</p>";
+          return;
+        }
+        suggestions.forEach((sug, index) => {
+          const date = new Date(sug.timestamp);
+          const timeString = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          const p = document.createElement("p");
+          const displayName = sug.username || (sug.wallet ? sug.wallet.slice(0, 8) + '...' : "Anonymous");
+          const avatarImg = sug.avatar ? `<img src="${sug.avatar}" class="avatar" alt="Avatar" onerror="this.onerror=null; this.src='/images/default-avatar.png'; console.log('Suggestion avatar failed:', '${sug.avatar}');">` : "";
+          p.innerHTML = `${avatarImg}${displayName} (${timeString}): ${sug.suggestion}`;
+          if (isAdmin || sug.wallet === user) {
+            const deleteBtn = document.createElement("span");
+            deleteBtn.className = "delete-btn";
+            deleteBtn.textContent = "❌";
+            deleteBtn.onclick = async () => {
+              if (confirm("Delete this suggestion?")) {
+                const deleteResponse = await fetch(`${BACKEND_URL}/delete-suggestion`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ index, wallet: user }),
+                });
+                const data = await deleteResponse.json();
+                if (deleteResponse.ok) {
+                  p.remove();
+                  statusDiv.textContent = "Suggestion deleted.";
+                } else {
+                  statusDiv.textContent = `Error deleting suggestion: ${data.error || "Unknown error"}`;
+                }
+              }
+            };
+            p.appendChild(deleteBtn);
+          }
+          suggestionsList.appendChild(p);
+        });
+        suggestionsList.scrollTop = suggestionsList.scrollHeight;
+      } catch (err) {
+        statusDiv.textContent = `Error loading suggestions: ${err.message}`;
+        console.error("Suggestions load error:", err); // Debug
+        suggestionsList.innerHTML = "<p>Failed to load suggestions.</p>";
+      }
+    }
+
+    // Load polls
+    async function loadPolls() {
+      try {
+        const user = window.solana?.publicKey?.toBase58();
+        const response = await fetch(`${BACKEND_URL}/polls`);
+        const polls = await response.json();
+        if (!response.ok) {
+          throw new Error(polls.error || "Failed to load polls");
+        }
+        pollList.innerHTML = "";
+        if (!Array.isArray(polls) || polls.length === 0) {
+          pollList.innerHTML = "<p>No polls available.</p>";
+          return;
+        }
+        polls.forEach((poll, index) => {
+          const p = document.createElement("p");
+          p.innerHTML = `<strong>${poll.question}</strong><br>Options: ${poll.options.map((opt, i) => `${opt.option} (${opt.votes} votes)`).join(", ")}`;
+          if (poll.voters.includes(user) ) {
+            p.innerHTML += "<br><em>You voted.</em>";
+          } else {
+            const voteBtn = document.createElement("button");
+            voteBtn.className = "retry-button";
+            voteBtn.textContent = "Vote";
+            voteBtn.onclick = async () => {
+              const option = prompt(`Enter option number (0-${poll.options.length - 1}):`);
+              if (option !== null && !isNaN(option) && option >= 0 && option < poll.options.length) {
+                const voteResponse = await fetch(`${BACKEND_URL}/vote`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ pollIndex: index, optionIndex: parseInt(option), wallet: user }),
+                });
+                const data = await voteResponse.json();
+                if (voteResponse.ok) {
+                  statusDiv.textContent = "Vote recorded!";
+                  loadPolls();
+                } else {
+                  statusDiv.textContent = `Error voting: ${data.error || "Unknown error"}`;
+                }
+              } else {
+                statusDiv.textContent = "Invalid option.";
+              }
+            };
+            p.appendChild(voteBtn);
+          }
+          pollList.appendChild(p);
+        });
+      } catch (err) {
+        statusDiv.textContent = `Error loading polls: ${err.message}`;
+        console.error("Polls load error:", err); // Debug
+        pollList.innerHTML = "<p>Failed to load polls.</p>";
+      }
+    }
+
+    // Create poll
+    createPollBtn.addEventListener("click", async () => {
+      console.log("Create Poll button clicked"); // Debug
+      const user = window.solana?.publicKey?.toBase58();
+      if (user !== ADMIN_WALLET) {
+        statusDiv.textContent = "Only admin can create polls.";
+        return;
+      }
+      const question = pollQuestion.value.trim();
+      const options = pollOption.value.trim().split(",").map(opt => opt.trim()).filter(opt => opt);
+      if (!question || options.length < 2) {
+        statusDiv.textContent = "Enter a question and at least two options (comma-separated).";
+        return;
+      }
+      try {
+        const response = await fetch(`${BACKEND_URL}/create-poll`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question, options, wallet: user }),
+        });
+        const data = await response.json();
+        if (response.ok) {
+          statusDiv.textContent = "Poll created successfully!";
+          pollQuestion.value = "";
+          pollOption.value = "";
+          await loadPolls();
+        } else {
+          statusDiv.textContent = `Error creating poll: ${data.error || "Unknown error"}`;
+        }
+      } catch (err) {
+        statusDiv.textContent = `Error creating poll: ${err.message}`;
+        console.error("Poll creation error:", err); // Debug
+      }
     });
 
-    return true;
-  } catch (err) {
-    statusDiv.textContent = `Could not verify SMM balance: ${err.message}`;
-    console.error("VIP access check error:", err); // Debug
-    retryBtn.style.display = "block";
-    return false;
-  }
-}
-
-retryBtn.addEventListener("click", async () => {
-  console.log("Retry button clicked"); // Debug
-  retryBtn.style.display = "none";
-  statusDiv.textContent = "";
-  await checkVipAccess();
-});
-
-window.addEventListener("load", async () => {
-  try {
-    const hasAccess = await checkVipAccess();
-    if (!hasAccess && !retryBtn.style.display) {
-      statusDiv.textContent = "Redirecting to main page...";
-      setTimeout(() => window.location.href = "index.html", 3000);
+    // Get Solana connection
+    async function getConnection(attempt = 0) {
+      const rpc = RPC_ENDPOINTS[attempt];
+      try {
+        const connection = new solanaWeb3.Connection(rpc, { commitment: "confirmed" });
+        await connection.getSlot();
+        return connection;
+      } catch (err) {
+        if (attempt < RPC_ENDPOINTS.length - 1) {
+          return getConnection(attempt + 1);
+        }
+        throw new Error("All RPC endpoints failed.");
+      }
     }
-  } catch (err) {
-    statusDiv.textContent = `Error loading page: ${err.message}`;
-    console.error("Page load error:", err); // Debug
-  }
-});  </script></body>
-</html>
 
+    // Update VIP info
+    async function updateVipInfo(publicKey, connection) {
+      try {
+        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+          publicKey,
+          { mint: TOKEN_MINT, programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") }
+        );
+        let tokenBalance = 0;
+        for (const { account } of tokenAccounts.value) {
+          if (account.data.parsed.info.mint === TOKEN_MINT.toBase58()) {
+            tokenBalance = parseFloat(account.data.parsed.info.tokenAmount.uiAmount);
+            break;
+          }
+        }
+        document.getElementById("vip-balance").textContent = tokenBalance.toLocaleString();
+        const rank = tokenBalance >= 1000000 ? "Rhodium" :
+                     tokenBalance >= 750000 ? "Platinum" :
+                     tokenBalance >= 500000 ? "Gold" :
+                     tokenBalance >= 250000 ? "Silver" :
+                     tokenBalance >= 100000 ? "Bronze" : "No Rank";
+        document.getElementById("vip-rank").textContent = rank;
+        return { balance: tokenBalance, rank };
+      } catch (err) {
+        statusDiv.textContent = `Error fetching balance: ${err.message}`;
+        console.error("Balance fetch error:", err); // Debug
+        return { balance: 0, rank: "No Rank" };
+      }
+    }
+
+    // Load username and bio
+    async function loadUsername(publicKey) {
+      try {
+        const response = await fetch(`${BACKEND_URL}/users`);
+        const users = await response.json();
+        if (!response.ok) {
+          throw new Error(users.error || "Failed to load user data");
+        }
+        const userData = users[publicKey.toBase58()] || { username: "Not set", avatar: null, bio: "Not set" };
+        document.getElementById("username-display").textContent = userData.username;
+        document.getElementById("bio-display").textContent = userData.bio;
+        const isAdmin = publicKey.toBase58() === ADMIN_WALLET;
+        if (userData.username !== "Not set" && !isAdmin) {
+          setUsernameBtn.textContent = "Username Set";
+          setUsernameBtn.disabled = true;
+        } else {
+          setUsernameBtn.textContent = "Change Username";
+          setUsernameBtn.disabled = false;
+        }
+        if (userData.bio !== "Not set" && !isAdmin) {
+          setBioBtn.textContent = "Bio Set";
+          setBioBtn.disabled = true;
+        } else {
+          setBioBtn.textContent = "Change Bio";
+          setBioBtn.disabled = false;
+        }
+        if (userData.avatar && !isAdmin) {
+          uploadAvatarBtn.textContent = "Avatar Set";
+          uploadAvatarBtn.disabled = true;
+        } else {
+          uploadAvatarBtn.textContent = userData.avatar ? "Change Avatar" : "Upload Avatar";
+          uploadAvatarBtn.disabled = false;
+        }
+        return userData;
+      } catch (err) {
+        statusDiv.textContent = `Error loading user data: ${err.message}`;
+        console.error("User data load error:", err); // Debug
+        return { username: "Not set", avatar: null, bio: "Not set" };
+      }
+    }
+
+    // Check VIP access
+    async function checkVipAccess() {
+      try {
+        if (!window.solana || !window.solana.isPhantom) {
+          statusDiv.textContent = "Phantom Wallet required. Please install Phantom.";
+          retryBtn.style.display = "none";
+          alert("Phantom Wallet is required. Install it from https://phantom.app.");
+          window.open("https://phantom.app/", "_blank");
+          return false;
+        }
+
+        const provider = window.solana;
+        let publicKey;
+        try {
+          const resp = await provider.connect();
+          publicKey = resp.publicKey;
+        } catch (err) {
+          statusDiv.textContent = "Please connect your Phantom wallet.";
+          retryBtn.style.display = "block";
+          return false;
+        }
+
+        const storedPublicKey = sessionStorage.getItem("smmPublicKey");
+        const isVerified = sessionStorage.getItem("smmVipVerified") === "true";
+
+        if (isVerified && storedPublicKey === publicKey.toBase58()) {
+          statusDiv.textContent = "VIP access granted!";
+        } else {
+          statusDiv.textContent = `Connected: ${publicKey.toBase58().slice(0, 6)}... Checking SMM balance...`;
+          const connection = await getConnection();
+          const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+            publicKey,
+            { mint: TOKEN_MINT, programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") }
+          );
+
+          let tokenBalance = 0;
+          for (const { account } of tokenAccounts.value) {
+            if (account.data.parsed.info.mint === TOKEN_MINT.toBase58()) {
+              tokenBalance = parseFloat(account.data.parsed.info.tokenAmount.uiAmount);
+              break;
+            }
+          }
+
+          if (tokenBalance < VIP_MINIMUM) {
+            statusDiv.textContent = `Access denied: Need at least ${VIP_MINIMUM.toLocaleString()} SMM. Current: ${tokenBalance.toLocaleString()} SMM.`;
+            retryBtn.style.display = "block";
+            sessionStorage.removeItem("smmVipVerified");
+            sessionStorage.removeItem("smmPublicKey");
+            return false;
+          }
+
+          sessionStorage.setItem("smmVipVerified", "true");
+          sessionStorage.setItem("smmPublicKey", publicKey.toBase58());
+          statusDiv.textContent = "VIP access granted!";
+        }
+
+        const connection = await getConnection();
+        const { rank } = await updateVipInfo(publicKey, connection);
+        await loadUsername(publicKey);
+        await loadSuggestions();
+        await loadPolls();
+        connectWebSocket(rank, publicKey.toBase58().slice(0, 6));
+
+        document.getElementById("submit-suggestion").addEventListener("click", async () => {
+          console.log("Submit Suggestion button clicked"); // Debug
+          const suggestion = suggestionInput.value.trim();
+          if (!suggestion) {
+            statusDiv.textContent = "Please enter a suggestion.";
+            return;
+          }
+          const user = window.solana?.publicKey;
+          if (!user) {
+            statusDiv.textContent = "Please connect your wallet.";
+            return;
+          }
+          const success = await submitSuggestion(user.toBase58(), suggestion);
+          if (success) {
+            suggestionInput.value = "";
+            await loadSuggestions();
+          }
+        });
+
+        document.getElementById("chat-input").addEventListener("keypress", (e) => {
+          if (e.key === "Enter") document.getElementById("send-chat").click();
+        });
+
+        return true;
+      } catch (err) {
+        statusDiv.textContent = `Could not verify SMM balance: ${err.message}`;
+        console.error("VIP access check error:", err); // Debug
+        retryBtn.style.display = "block";
+        return false;
+      }
+    }
+
+    retryBtn.addEventListener("click", async () => {
+      console.log("Retry button clicked"); // Debug
+      retryBtn.style.display = "none";
+      statusDiv.textContent = "";
+      await checkVipAccess();
+    });
+
+    window.addEventListener("load", async () => {
+      try {
+        const hasAccess = await checkVipAccess();
+        if (!hasAccess && !retryBtn.style.display) {
+          statusDiv.textContent = "Redirecting to main page...";
+          setTimeout(() => window.location.href = "index.html", 3000);
+        }
+      } catch (err) {
+        statusDiv.textContent = `Error loading page: ${err.message}`;
+        console.error("Page load error:", err); // Debug
+      }
+    });
+  </script>
+</body>
+</html>
